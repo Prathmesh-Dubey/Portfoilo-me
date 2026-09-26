@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import MobileLanding from '@/components/MobileLanding';
 import Portfolio from '@/components/Portfolio';
+import { accountSummary } from '@/lib/auth';
 import { PRICES } from '@/lib/members';
 import { skillIcons } from '@/lib/skillIcons';
 import { publicView, readPortfolio } from '@/lib/store';
@@ -21,7 +22,7 @@ export default async function Home() {
   return (
     <>
       {/* Phones see the ReuseMe landing first; desktop goes straight to the portfolio (CSS decides). */}
-      <MobileLanding prices={PRICES} ownerName={data.profile.name} />
+      <MobileLanding prices={PRICES} ownerName={data.profile.name} account={await accountSummary()} />
       <Portfolio initial={data} admin={false} skillIcons={skillIcons(data.skills.flatMap((g) => g.items))} />
     </>
   );

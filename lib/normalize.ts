@@ -111,8 +111,8 @@ export function normalize(input: any): Portfolio {
       }))
       .filter((x) => x.degree || x.school),
     certifications: arr(d.certifications)
-      .map((x) => ({ id: id(x?.id, 'cert'), name: str(x?.name, 160), issuer: str(x?.issuer, 120), date: str(x?.date, 30), url: safeUrl(x?.url) }))
-      .filter((x) => x.name),
+      .map((x) => ({ id: id(x?.id, 'cert'), name: str(x?.name, 160), course: str(x?.course, 120), issuer: str(x?.issuer, 120), date: str(x?.date, 30), url: safeUrl(x?.url) }))
+      .filter((x) => x.name || x.course),
     achievements: lines(d.achievements),
     settings: {
       resume: {

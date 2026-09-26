@@ -2280,7 +2280,8 @@ img {
   }
 }
 
-@media (max-width: 820px) {
+/* The full navbar needs ~1320px; narrower screens use the menu button. */
+@media (max-width: 1320px) {
   .menu-btn {
     display: inline-grid;
   }
@@ -2309,15 +2310,18 @@ img {
   .nav-links a:not(.btn) {
     padding: 12px 14px;
   }
-  .nav-cta {
+  .nav-cta,
+  .nav-live {
     margin: 6px 0 0;
     height: 44px;
   }
-  .logo-name {
-    display: none;
-  }
   .nav-tools {
     margin-left: auto;
+  }
+}
+@media (max-width: 820px) {
+  .logo-name {
+    display: none;
   }
 }
 
@@ -3356,6 +3360,13 @@ img {
 .ml-hero .btn-ghost {
   width: 100%;
 }
+.ml-actions {
+  display: grid;
+  gap: 14px;
+}
+.ml-nav {
+  display: none;
+}
 .ml-visual {
   display: grid;
   place-items: center;
@@ -4083,4 +4094,329 @@ img {
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* desktop navbar: "Live" → /live, the ReuseMe landing page with pricing (phones already open on it) */
+.nav-live {
+  gap: 8px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+}
+.nav-live:hover {
+  border-color: var(--accent);
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+@keyframes live-pulse {
+  70% {
+    box-shadow: 0 0 0 7px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}
+@media (min-width: 1321px) {
+  .nav-live {
+    margin-left: 8px;
+  }
+  .nav-live + .nav-cta {
+    margin-left: 0;
+  }
+}
+@media (max-width: 820px) {
+  .nav-live {
+    display: none;
+  }
+}
+/* /live: the phone landing page, shown on any screen as a centred phone-width column */
+.mobile-landing.ml-standalone {
+  display: block;
+  max-width: 480px;
+  margin: 0 auto;
+}
+/* laptops/tablets using the menu: a compact dropdown under the menu button instead of a full-width sheet */
+@media (min-width: 821px) and (max-width: 1320px) {
+  .nav-links {
+    left: auto;
+    right: 24px;
+    width: 320px;
+  }
+}
+
+/* /live on desktop: the same landing page laid out for wide screens (phones keep the single column above) */
+@media (min-width: 821px) {
+  .mobile-landing.ml-standalone {
+    max-width: 1160px;
+    padding: 0 40px 24px;
+  }
+  .ml-standalone .ml-top {
+    gap: 12px;
+    padding: 22px 0;
+  }
+  .ml-standalone .ml-nav {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .ml-standalone .ml-nav a {
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: var(--text-2);
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .ml-standalone .ml-nav a:hover {
+    color: var(--text);
+    background: var(--surface-2);
+  }
+  .ml-standalone .ml-hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    column-gap: 56px;
+    row-gap: 18px;
+    align-items: center;
+    padding: 48px 0 24px;
+  }
+  .ml-standalone .ml-hero > :not(.ml-visual) {
+    grid-column: 1;
+  }
+  .ml-standalone .ml-hero h1 {
+    font-size: clamp(2.8rem, 4.6vw, 4rem);
+  }
+  .ml-standalone .ml-hero > p {
+    max-width: 34em;
+    font-size: 1.1rem;
+  }
+  .ml-standalone .ml-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .ml-standalone .ml-actions .btn {
+    width: auto;
+  }
+  .ml-standalone .ml-visual {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    min-height: 420px;
+    padding: 0;
+    border-radius: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .ml-standalone .ml-visual .loader-stage {
+    transform: scale(2);
+  }
+  .ml-standalone .ml-section {
+    gap: 22px;
+    padding: 64px 0 8px;
+  }
+  .ml-standalone .ml-section h2 {
+    font-size: 2rem;
+  }
+  .ml-standalone .ml-features {
+    grid-template-columns: repeat(2, 1fr); /* 2 × 2, never 3 + 1 */
+    gap: 16px;
+  }
+  .ml-standalone .ml-feature {
+    flex-direction: column;
+    padding: 22px;
+  }
+  .ml-standalone .ml-steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .ml-standalone .ml-steps li {
+    padding: 64px 20px 20px;
+  }
+  .ml-standalone .ml-steps li::before {
+    top: 20px;
+    left: 20px;
+    transform: none;
+  }
+  .ml-standalone #ml-how > .ml-cta,
+  .ml-standalone .ml-pricing > .ml-cta {
+    width: auto;
+    justify-self: start;
+  }
+  .ml-standalone .ml-pricing {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 56px;
+    align-items: start;
+    margin-top: 64px;
+    padding: 48px;
+    border-radius: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .ml-standalone .ml-pricing > * {
+    grid-column: 1;
+  }
+  .ml-standalone .ml-pricing > .ml-plans {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    align-self: center;
+    gap: 16px;
+    margin: 0;
+  }
+  .ml-standalone .ml-plan {
+    padding: 36px 16px 28px;
+  }
+  .ml-standalone .ml-plan b {
+    font-size: 2.6rem;
+  }
+}
+@media (min-width: 1100px) {
+  .ml-standalone .ml-features {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* certificates section: preview of the certificate page + details */
+.certs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+.cert-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.cert-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-line);
+  box-shadow: var(--shadow);
+}
+.cert-card:hover .cover {
+  transform: scale(1.045);
+}
+.cert-media {
+  display: block;
+  background: var(--surface-2);
+}
+.cert-art {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--accent);
+  background:
+    radial-gradient(circle at 20% 15%, var(--accent-soft), transparent 60%),
+    radial-gradient(circle at 85% 90%, var(--accent-soft), transparent 55%),
+    var(--surface-2);
+}
+.cert-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 18px 18px;
+}
+.cert-body h3 {
+  font-size: 1.05rem;
+}
+.cert-view {
+  margin-top: auto;
+  gap: 6px;
+}
+
+/* signed-in account on the landing page header: photo/initials + first name, tap for a small menu */
+.ml-account {
+  position: relative;
+}
+.ml-account-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 180px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+}
+.ml-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.ml-avatar-initials {
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: #2f6df0;
+}
+.ml-account-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ml-account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 60;
+  width: min(260px, calc(100vw - 32px));
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+}
+.ml-account-who {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px 10px;
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+}
+.ml-account-menu a,
+.ml-account-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-align: left;
+  color: var(--text);
+}
+.ml-account-menu a:hover,
+.ml-account-menu button:hover {
+  background: var(--surface-2);
+}
+.ml-account-chev {
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  color: var(--muted);
 }

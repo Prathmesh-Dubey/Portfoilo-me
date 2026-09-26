@@ -1,18 +1,18 @@
 import { readPortfolio } from '@/lib/store';
 import { readableTenant } from '@/lib/tenant';
 
-// Preview image for a project card, without storing anything:
-//  - the project's live/deployed URL -> a screenshot of that site's front page (thum.io)
+// Preview image for a project or certificate card, without storing anything:
+//  - the project's live/deployed URL or a certificate link -> a screenshot of that page (thum.io)
 //  - its GitHub repo or other link   -> the page's social preview image (og:image)
-// Only URLs that appear in the portfolio's own projects are accepted (no open proxy).
+// Only URLs that appear in the portfolio's own projects and certificates are accepted (no open proxy).
 export async function GET(request: Request) {
   const url = new URL(request.url).searchParams.get('url') || '';
   if (!/^https?:\/\//.test(url)) return new Response('Bad link', { status: 400 });
   const t = await readableTenant(request);
   if (t === null) return new Response('Not found', { status: 404 });
-  const projects = (await readPortfolio(t)).projects;
+  const { projects, certifications } = await readPortfolio(t);
 
-  if (projects.some((p) => p.demo === url)) {
+  if (projects.some((p) => p.demo === url) || certifications.some((c) => c.url === url)) {
     return Response.redirect(`https://image.thum.io/get/width/1200/crop/750/noanimate/${url}`, 302);
   }
   const known = projects.some((p) => p.repo === url || p.links.some((l) => l.url === url));

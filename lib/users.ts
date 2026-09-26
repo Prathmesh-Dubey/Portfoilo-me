@@ -88,6 +88,19 @@ export async function writeUserResume(email: string, draft: unknown) {
   await (await resumes()).replaceOne({ _id: draftId(email) }, { draft, at: new Date() }, { upsert: true });
 }
 
+// ---------- profile photos from Google sign-in (any account type; keyed by email) ----------
+
+type AvatarDoc = { _id: string; picture: string; at: Date };
+const avatars = () => col<AvatarDoc>('avatars');
+
+export async function saveAvatar(email: string, picture: string) {
+  if (picture) await (await avatars()).replaceOne({ _id: normEmail(email) }, { picture, at: new Date() }, { upsert: true });
+}
+
+export async function readAvatar(email: string): Promise<string> {
+  return (await (await avatars()).findOne({ _id: normEmail(email) }))?.picture ?? '';
+}
+
 /** For the owner's admin panel (no password hashes). */
 export const usersOverview = async () =>
   (await listUsers()).map((u) => ({ id: u.id, name: u.name, email: u.email, provider: u.provider, createdAt: u.createdAt, lastLoginAt: u.lastLoginAt || '' }));

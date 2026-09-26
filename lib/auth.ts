@@ -4,7 +4,8 @@ import { cookies } from 'next/headers';
 import { col } from './db';
 import { findMemberByEmail, isLive, normEmail, setMemberPassword, type Member } from './members';
 import { hashPassword, newSalt, safeEqual, verifyPassword } from './password';
-import { createUser, findUserByEmail, setUserPassword, touchUser, type AppUser } from './users';
+import { readPortfolio } from './store';
+import { createUser, findUserByEmail, readAvatar, setUserPassword, touchUser, type AppUser } from './users';
 
 // Three kinds of accounts, all in MongoDB:
 // - the owner: `accounts` { _id:'owner', email, salt, hash } (created from ADMIN_EMAIL / ADMIN_PASSWORD on first run)
@@ -64,6 +65,22 @@ async function accountFor(email: string): Promise<{ user: User; salt: string; ha
 
 /** Where someone lands after signing in: users go to the resume builder, everyone else to their admin panel. */
 export const homeFor = (u: User) => (u.role === 'user' ? '/resume-builder' : '/admin');
+
+export type AccountSummary = { name: string; email: string; picture: string; home: string; homeLabel: string } | null;
+
+/** Name, photo and dashboard link of the signed-in account, for showing in page headers. */
+export async function accountSummary(): Promise<AccountSummary> {
+  const u = await currentUser();
+  if (!u) return null;
+  const name = u.role === 'user' ? u.user.name : u.role === 'member' ? u.member.name : (await readPortfolio()).profile.name;
+  return {
+    name: name || u.email.split('@')[0],
+    email: u.email,
+    picture: await readAvatar(u.email).catch(() => ''),
+    home: homeFor(u),
+    homeLabel: u.role === 'user' ? 'My resume builder' : 'Admin panel',
+  };
+}
 
 export async function checkCredentials(email: string, password: string): Promise<User | null> {
   const acc = await accountFor(email);

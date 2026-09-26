@@ -146,8 +146,8 @@ export function educationEditor(ctx: AdminCtx): EditorSpec {
 export function extrasEditor(ctx: AdminCtx): EditorSpec {
   const d = ctx.latest();
   return {
-    title: 'Certifications & achievements',
-    description: 'Optional — each section only appears (on the site and resume) when it has entries.',
+    title: 'Certificates & achievements',
+    description: 'Optional: each part only appears (on the site and resume) when it has entries. Certificates with a URL show a live preview on your site.',
     value: { certifications: d.certifications, achievements: d.achievements },
     fields: [
       {
@@ -155,13 +155,14 @@ export function extrasEditor(ctx: AdminCtx): EditorSpec {
         key: 'certifications',
         label: 'Certifications',
         addLabel: 'Add certification',
-        newItem: () => ({ id: newId('cert'), name: '', issuer: '', date: '', url: '' }),
-        itemTitle: (x) => x.name,
+        newItem: () => ({ id: newId('cert'), name: '', course: '', issuer: '', date: '', url: '' }),
+        itemTitle: (x) => [x.name, x.course].filter(Boolean).join(' · '),
         fields: [
-          { type: 'text', key: 'name', label: 'Name' },
-          { type: 'text', key: 'issuer', label: 'Issuer', half: true },
-          { type: 'text', key: 'date', label: 'Date', half: true },
-          { type: 'url', key: 'url', label: 'Credential URL (optional)' },
+          { type: 'text', key: 'name', label: 'Certificate name', placeholder: 'Oracle Certified Java Programmer' },
+          { type: 'text', key: 'course', label: 'Course / specialization', placeholder: 'Java Full Stack' },
+          { type: 'text', key: 'issuer', label: 'Issuer', half: true, placeholder: 'Oracle' },
+          { type: 'text', key: 'date', label: 'Date', half: true, placeholder: 'Mar 2026' },
+          { type: 'url', key: 'url', label: 'Certificate URL', placeholder: 'https://… (link where anyone can view it)' },
         ],
       },
       { type: 'lines', key: 'achievements', label: 'Achievements', rows: 4 },

@@ -59,7 +59,7 @@ chosen.forEach((x) => {
   if (r.showProjectLinks) projectLinks(x).slice(0, 2).forEach((l) => want(`project link: ${x.name}`, pretty(l.url)));
 });
 data.education.forEach((e) => [e.degree, e.school, e.start, e.end, e.score].forEach((v) => want(`education: ${e.degree}`, v)));
-data.certifications.forEach((c) => [c.name, c.issuer, c.date].forEach((v) => want(`certification: ${c.name}`, v)));
+data.certifications.forEach((c) => [c.name, c.course, c.issuer, c.date].forEach((v) => want(`certification: ${c.name || c.course}`, v)));
 data.achievements.forEach((a) => want('achievement', a));
 
 const missing = expected.filter(([, v]) => !haystack.includes(squash(v)));

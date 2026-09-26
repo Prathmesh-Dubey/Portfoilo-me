@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { gmailCompose } from '@/lib/links';
 import { MAX_RESUME_PROJECTS, type Portfolio as Data, type Project, type SkillGroup } from '@/lib/types';
 import { BrandLogo } from './BrandLogo';
+import { saveFile } from './nativeApp';
+import { CertificateGrid } from './Certificates';
 import { Icon, linkIcon } from './Icons';
 import { ProjectCover, ProjectLinks, ProjectModal, dateRange, primaryLink } from './Projects';
 import { EditorModal, type EditorSpec } from './admin/Form';
@@ -127,14 +129,16 @@ export default function Portfolio({
   const roles = p.title.split('|').map((s) => s.trim()).filter(Boolean);
   const current = data.experience[0];
   const techCount = new Set(data.skills.flatMap((g) => g.items.map((i) => i.toLowerCase()))).size;
-  const hasExtras = data.certifications.length > 0 || data.achievements.length > 0;
+  const hasCerts = data.certifications.length > 0;
+  const hasAchievements = data.achievements.length > 0;
 
   const nav = [
     { id: 'about', label: 'About' },
     { id: 'skills', label: 'Skills', show: data.skills.length > 0 },
     { id: 'experience', label: 'Experience', show: data.experience.length > 0 },
     { id: 'projects', label: 'Projects' },
-    { id: 'education', label: 'Education', show: data.education.length > 0 || hasExtras },
+    { id: 'certifications', label: 'Certificates', show: hasCerts },
+    { id: 'education', label: 'Education', show: data.education.length > 0 || hasAchievements },
     { id: 'contact', label: 'Contact' },
     { id: 'suggest', label: 'Suggest', show: isOwnerSite },
   ].filter((n) => n.show !== false || (editing && n.id !== 'suggest'));
@@ -158,7 +162,7 @@ export default function Portfolio({
       )}
       {admin && role === 'member' && member && <MemberBanner member={member} />}
       <div className="bg-glow" aria-hidden="true" />
-      <Nav name={p.name} items={nav} resumeHref={u('/api/resume/download')} />
+      <Nav name={p.name} items={nav} resumeHref={u('/api/resume/download')} showLive={isOwnerSite} />
 
       {/* ---------------- hero ---------------- */}
       <header className="hero wrap" id="top">
@@ -363,8 +367,17 @@ export default function Portfolio({
           clearSkillFilter={() => setSkillFilter(null)}
         />
 
-        {/* ---------------- education + extras ---------------- */}
-        {(data.education.length > 0 || hasExtras || editing) && (
+        {/* ---------------- certifications ---------------- */}
+        {(hasCerts || editing) && (
+          <section id="certifications" className="section wrap">
+            <SectionHead no={num()} tag="certifications" title="Certificates" count={data.certifications.length} onEdit={editing ? () => open(extrasEditor) : undefined} />
+            {!hasCerts && <p className="muted">No certificates yet. Hidden from visitors until you add one.</p>}
+            <CertificateGrid items={data.certifications} />
+          </section>
+        )}
+
+        {/* ---------------- education + achievements ---------------- */}
+        {(data.education.length > 0 || hasAchievements || editing) && (
           <section id="education" className="section wrap">
             <SectionHead no={num()} tag="education" title="Education" onEdit={editing ? () => open(educationEditor) : undefined} />
             <div className="edu-grid">
@@ -383,23 +396,14 @@ export default function Portfolio({
               ))}
             </div>
 
-            {(hasExtras || editing) && (
+            {(hasAchievements || editing) && (
               <div className="extras">
                 <div className="extras-head">
-                  <h3 className="sub-title">Certifications & achievements</h3>
+                  <h3 className="sub-title">Achievements</h3>
                   {editing && <EditButton onClick={() => open(extrasEditor)} label="Edit" />}
                 </div>
-                {!hasExtras && editing && <p className="muted">Nothing here yet — hidden from visitors until you add something.</p>}
+                {!hasAchievements && editing && <p className="muted">Nothing here yet — hidden from visitors until you add something.</p>}
                 <div className="extras-grid">
-                  {data.certifications.map((c) => (
-                    <article key={c.id} className="card cert reveal">
-                      <Icon name="award" size={20} />
-                      <div>
-                        <b>{c.url ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a> : c.name}</b>
-                        <small>{[c.issuer, c.date].filter(Boolean).join(' · ')}</small>
-                      </div>
-                    </article>
-                  ))}
                   {data.achievements.map((a, i) => (
                     <article key={i} className="card cert reveal">
                       <Icon name="star" size={20} />
@@ -795,7 +799,8 @@ function EditButton({ onClick, label = 'Edit' }: { onClick: () => void; label?: 
   );
 }
 
-function Nav({ name, items, resumeHref }: { name: string; items: { id: string; label: string }[]; resumeHref: string }) {
+/** `showLive`: the owner's site links to the ReuseMe landing page with pricing (/live). Desktop only: phones already open on it. */
+function Nav({ name, items, resumeHref, showLive = false }: { name: string; items: { id: string; label: string }[]; resumeHref: string; showLive?: boolean }) {
   const initials = name.split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).slice(0, 2).join('') || 'PD';
   const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -832,6 +837,11 @@ function Nav({ name, items, resumeHref }: { name: string; items: { id: string; l
               {n.label}
             </a>
           ))}
+          {showLive && (
+            <Link href="/live" className="btn btn-sm nav-live">
+              <span className="live-dot" aria-hidden="true" /> Live
+            </Link>
+          )}
           <Link href="/resume-builder" className="btn btn-ghost btn-sm nav-cta">
             <Icon name="sparkle" size={15} /> Build your resume
           </Link>
@@ -889,11 +899,7 @@ function AdminDock({
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(ctx.latest(), null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `portfolio-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    saveFile(blob, `portfolio-backup-${new Date().toISOString().slice(0, 10)}.json`);
   };
 
   const importJson = async (file: File) => {

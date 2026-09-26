@@ -49,7 +49,8 @@ export type Project = {
 };
 
 export type Education = { id: string; degree: string; school: string; start: string; end: string; score: string };
-export type Certification = { id: string; name: string; issuer: string; date: string; url: string };
+/** `course`: the programme it's for, e.g. "Java Full Stack"; `url`: where anyone can view the certificate. */
+export type Certification = { id: string; name: string; course: string; issuer: string; date: string; url: string };
 
 export type ResumeSettings = {
   template: 'creative' | 'classic';

@@ -234,12 +234,14 @@ export function CreativeResume({ data: d, scale: k, photo }: DocProps) {
                   <View key={c.id} style={s.edu} wrap={false}>
                     {c.url ? (
                       <Link src={c.url} style={[s.degree, { textDecoration: 'none' }]}>
-                        {c.name}
+                        {c.name || c.course}
                       </Link>
                     ) : (
-                      <Text style={s.degree}>{c.name}</Text>
+                      <Text style={s.degree}>{c.name || c.course}</Text>
                     )}
-                    {(c.issuer || c.date) !== '' && <Text style={s.school}>{[c.issuer, c.date].filter(Boolean).join('  ·  ')}</Text>}
+                    {(c.name && c.course ? c.course : '') + c.issuer + c.date !== '' && (
+                      <Text style={s.school}>{[c.name ? c.course : '', c.issuer, c.date].filter(Boolean).join('  ·  ')}</Text>
+                    )}
                   </View>
                 ))}
               </Section>

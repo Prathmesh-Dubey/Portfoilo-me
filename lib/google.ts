@@ -19,7 +19,7 @@ async function googleKeys(force = false): Promise<Jwk[]> {
 }
 
 /** Returns the verified Google account for an ID token, or throws. */
-export async function verifyGoogleIdToken(token: string, clientId: string): Promise<{ email: string; name: string }> {
+export async function verifyGoogleIdToken(token: string, clientId: string): Promise<{ email: string; name: string; picture: string }> {
   const [h, p, sig] = String(token).split('.');
   if (!h || !p || !sig) throw new Error('Malformed Google token');
   const header = JSON.parse(Buffer.from(h, 'base64url').toString());
@@ -36,5 +36,6 @@ export async function verifyGoogleIdToken(token: string, clientId: string): Prom
   if (!validIssuer || claims.aud !== clientId || !(claims.exp * 1000 > Date.now()) || claims.email_verified !== true || !claims.email) {
     throw new Error('Google did not confirm this email');
   }
-  return { email: String(claims.email).toLowerCase(), name: String(claims.name || '') };
+  const picture = /^https:\/\/[\w.-]+\.googleusercontent\.com\//.test(String(claims.picture || '')) ? String(claims.picture) : '';
+  return { email: String(claims.email).toLowerCase(), name: String(claims.name || ''), picture };
 }

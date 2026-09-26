@@ -128,12 +128,14 @@ export function ClassicResume({ data: d, scale: k }: DocProps) {
                 <Text style={{ flexShrink: 1 }}>
                   {c.url ? (
                     <Link src={c.url} style={[s.b, s.a, { color: INK }]}>
-                      {c.name}
+                      {c.name || c.course}
                     </Link>
                   ) : (
-                    <Text style={s.b}>{c.name}</Text>
+                    <Text style={s.b}>{c.name || c.course}</Text>
                   )}
-                  {c.issuer !== '' && <Text style={s.sub}>{`  -  ${c.issuer}`}</Text>}
+                  {[c.name ? c.course : '', c.issuer].filter(Boolean).map((v) => (
+                    <Text key={v} style={s.sub}>{`  -  ${v}`}</Text>
+                  ))}
                 </Text>
                 <Text style={s.date}>{c.date}</Text>
               </View>

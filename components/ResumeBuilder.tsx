@@ -6,6 +6,7 @@ import { Fields, type Field } from './admin/Form';
 import { BrandLogo } from './BrandLogo';
 import { PdfPreview } from './admin/PdfPreview';
 import { Icon } from './Icons';
+import { inNativeApp, saveFile } from './nativeApp';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Obj = Record<string, any>;
@@ -261,12 +262,14 @@ const SECTIONS: { key: keyof State; title: string; icon: Parameters<typeof Icon>
         key: 'certifications',
         label: 'Certifications',
         addLabel: 'Add certification',
-        newItem: () => ({ id: uid(), name: '', issuer: '', date: '', url: '' }),
-        itemTitle: (x) => x.name,
+        newItem: () => ({ id: uid(), name: '', course: '', issuer: '', date: '', url: '' }),
+        itemTitle: (x) => [x.name, x.course].filter(Boolean).join(' · '),
         fields: [
-          { type: 'text', key: 'name', label: 'Name' },
-          { type: 'text', key: 'issuer', label: 'Issuer', half: true },
-          { type: 'text', key: 'date', label: 'Date', half: true },
+          { type: 'text', key: 'name', label: 'Certificate name', placeholder: 'Oracle Certified Java Programmer' },
+          { type: 'text', key: 'course', label: 'Course / specialization', placeholder: 'Java Full Stack' },
+          { type: 'text', key: 'issuer', label: 'Issuer', half: true, placeholder: 'Oracle' },
+          { type: 'text', key: 'date', label: 'Date', half: true, placeholder: 'Mar 2026' },
+          { type: 'url', key: 'url', label: 'Certificate URL', placeholder: 'https://… (link where anyone can view it)' },
         ],
       },
       { type: 'lines', key: 'achievements', label: 'Achievements', rows: 3 },
@@ -589,7 +592,19 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
                         : `${pdf.pages} pages — trim a little to fit one`
                       : ''}
             </span>
-            <a className={`btn btn-primary ${pdf && hasName ? '' : 'disabled'}`} href={hasName ? pdf?.url : undefined} download={fileName} aria-disabled={!pdf || !hasName}>
+            <a
+              className={`btn btn-primary ${pdf && hasName ? '' : 'disabled'}`}
+              href={hasName ? pdf?.url : undefined}
+              download={fileName}
+              aria-disabled={!pdf || !hasName}
+              onClick={(e) => {
+                // the Android app can't follow blob: download links, so hand the PDF to the app instead
+                if (pdf && hasName && inNativeApp()) {
+                  e.preventDefault();
+                  saveFile(new Blob([pdf.bytes], { type: 'application/pdf' }), fileName);
+                }
+              }}
+            >
               <Icon name="download" size={16} /> Download PDF
             </a>
           </div>
