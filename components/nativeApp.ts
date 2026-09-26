@@ -18,15 +18,15 @@ export function googleMode(): 'web' | 'native' | 'none' {
   return typeof navigator !== 'undefined' && navigator.userAgent.includes('ReuseMeApp') ? 'none' : 'web';
 }
 
-/** Native Google sign-in in the Android app; resolves with a Google ID token, or null if the person cancelled. */
-export function nativeGoogleSignIn(webClientId: string): Promise<string | null> {
+/** Native Google sign-in in the Android app; resolves with a Google ID token, or rejects with Google's reason. */
+export function nativeGoogleSignIn(webClientId: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const w = window as unknown as { __reuseMeGoogle?: (status: string, value: string) => void };
     w.__reuseMeGoogle = (status, value) => {
       delete w.__reuseMeGoogle;
+      // a "cancel" can also be Google refusing a misconfigured app, so its reason is always shown
       if (status === 'ok') resolve(value);
-      else if (status === 'cancel') resolve(null);
-      else reject(new Error(value || 'Google sign-in failed'));
+      else reject(new Error(value || (status === 'cancel' ? 'cancelled' : 'Google sign-in failed')));
     };
     bridge()!.googleSignIn!(webClientId);
   });

@@ -17,6 +17,6 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, to: homeFor(user) });
   } catch (e) {
     console.error('Google sign-in failed:', e);
-    return Response.json({ error: 'Couldn’t sign in with Google. Please try again.' }, { status: 400 });
+    return Response.json({ error: `Couldn’t sign in with Google (${(e as Error).message}). Please try again.` }, { status: 400 });
   }
 }

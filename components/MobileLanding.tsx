@@ -189,6 +189,9 @@ export default function MobileLanding({
           <b>Reuse</b>Me
         </span>
         <span className="muted small">Made by {ownerName}</span>
+        <Link href="/privacy" className="muted small">
+          Privacy policy
+        </Link>
       </footer>
     </div>
   );

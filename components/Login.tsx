@@ -149,8 +149,7 @@ export default function Login({ googleClientId = '', startWith = 'login' }: { go
   const nativeGoogle = async () => {
     setError('');
     try {
-      const credential = await nativeGoogleSignIn(googleClientId);
-      if (credential) await google(credential);
+      await google(await nativeGoogleSignIn(googleClientId));
     } catch (err) {
       setError(`Couldn’t sign in with Google: ${(err as Error).message}`);
     }
@@ -370,9 +369,9 @@ export default function Login({ googleClientId = '', startWith = 'login' }: { go
           </form>
         )}
 
-        <Link href="/" className="muted small">
-          ← Back to site
-        </Link>
+        <p className="muted small login-foot">
+          <Link href="/">← Back to site</Link> · <Link href="/privacy">Privacy policy</Link>
+        </p>
       </div>
     </div>
   );

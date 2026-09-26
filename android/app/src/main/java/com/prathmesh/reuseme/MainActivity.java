@@ -152,7 +152,10 @@ public class MainActivity extends BridgeActivity {
 
                 @Override
                 public void onError(GetCredentialException e) {
-                    sendGoogleResult(e instanceof GetCredentialCancellationException ? "cancel" : "error", String.valueOf(e.getMessage()));
+                    // Show Google's exact reason: a misconfigured OAuth client often comes back looking like a cancel.
+                    String detail = e.getClass().getSimpleName() + ": " + e.getMessage();
+                    toast("Google sign-in: " + detail);
+                    sendGoogleResult(e instanceof GetCredentialCancellationException ? "cancel" : "error", detail);
                 }
             }
         );
