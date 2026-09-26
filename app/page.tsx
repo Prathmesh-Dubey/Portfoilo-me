@@ -7,6 +7,7 @@ import { skillIcons } from '@/lib/skillIcons';
 import { publicView, readPortfolio } from '@/lib/store';
 
 export async function generateMetadata(): Promise<Metadata> {
+  await connection();
   const { profile, summary } = await readPortfolio();
   return {
     title: `${profile.name} — ${profile.title.replace(/\s*\|\s*/g, ' · ')}`,

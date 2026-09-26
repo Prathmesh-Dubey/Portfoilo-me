@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { connection } from 'next/server';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
@@ -27,6 +28,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
   // Applies the visitor's saved light/dark choice (or the owner's default) before first paint — no flash.
+  await connection(); // read the owner's theme per request, never at build time (the database isn't reachable then)
   const fallback = JSON.stringify(await readPortfolio().then((d) => d.settings.site.theme, () => 'light'));
   const themeScript = `(function(){var t;try{t=localStorage.getItem('pf-theme')}catch(e){}document.documentElement.dataset.theme=t||${fallback}})()`;
   // Launch splash: plays on app launch / first view of a browser session, skipped (before paint) afterwards.
