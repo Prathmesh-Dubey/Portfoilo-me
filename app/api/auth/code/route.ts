@@ -9,8 +9,8 @@ export async function POST(request: Request) {
   const email = String(body.email ?? '').trim();
 
   if (body.action === 'send') {
-    if (limited(`code-send:${ip}`, 6, 15 * 60 * 1000)) return Response.json({ error: 'Too many codes requested. Try again in 15 minutes.' }, { status: 429 });
-    const code = createCode(email, 'login');
+    if (await limited(`code-send:${ip}`, 6, 15 * 60 * 1000)) return Response.json({ error: 'Too many codes requested. Try again in 15 minutes.' }, { status: 429 });
+    const code = await createCode(email, 'login');
     if (code) await sendCodeMail(email, code, 'login', CODE_MINUTES).catch((e) => console.error('Login code email failed:', e));
     return Response.json({
       ok: true,
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
   }
 
   if (body.action === 'verify') {
-    if (limited(`code-verify:${ip}`, 15, 15 * 60 * 1000)) return Response.json({ error: 'Too many attempts. Try again in 15 minutes.' }, { status: 429 });
-    if (!consumeCode(email, String(body.code ?? ''), 'login')) return Response.json({ error: 'That code is wrong or has expired' }, { status: 400 });
+    if (await limited(`code-verify:${ip}`, 15, 15 * 60 * 1000)) return Response.json({ error: 'Too many attempts. Try again in 15 minutes.' }, { status: 429 });
+    if (!(await consumeCode(email, String(body.code ?? ''), 'login'))) return Response.json({ error: 'That code is wrong or has expired' }, { status: 400 });
     const user = await startSession(email);
     return Response.json({ ok: true, to: homeFor(user) });
   }

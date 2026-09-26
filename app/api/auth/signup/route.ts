@@ -11,12 +11,12 @@ export async function POST(request: Request) {
 
   if (body.action === 'send') {
     if (body.website) return Response.json({ ok: true, message: '' }); // spam trap
-    if (limited(`signup-send:${ip}`, 6, 15 * 60 * 1000)) return Response.json({ error: 'Too many codes requested. Try again in 15 minutes.' }, { status: 429 });
+    if (await limited(`signup-send:${ip}`, 6, 15 * 60 * 1000)) return Response.json({ error: 'Too many codes requested. Try again in 15 minutes.' }, { status: 429 });
     const name = String(body.name ?? '').trim();
     if (!name) return Response.json({ error: 'Enter your name' }, { status: 400 });
     if (!isEmail(email)) return Response.json({ error: 'Enter a valid email address' }, { status: 400 });
     try {
-      const code = createSignupCode({ name, email, password: String(body.password ?? '') });
+      const code = await createSignupCode({ name, email, password: String(body.password ?? '') });
       await sendCodeMail(email, code, 'signup', CODE_MINUTES);
     } catch (e) {
       return Response.json({ error: (e as Error).message || 'Could not send the code' }, { status: 400 });
@@ -30,8 +30,8 @@ export async function POST(request: Request) {
   }
 
   if (body.action === 'verify') {
-    if (limited(`signup-verify:${ip}`, 15, 15 * 60 * 1000)) return Response.json({ error: 'Too many attempts. Try again in 15 minutes.' }, { status: 429 });
-    if (!completeSignup(email, String(body.code ?? ''))) return Response.json({ error: 'That code is wrong or has expired' }, { status: 400 });
+    if (await limited(`signup-verify:${ip}`, 15, 15 * 60 * 1000)) return Response.json({ error: 'Too many attempts. Try again in 15 minutes.' }, { status: 429 });
+    if (!(await completeSignup(email, String(body.code ?? '')))) return Response.json({ error: 'That code is wrong or has expired' }, { status: 400 });
     const user = await startSession(email);
     return Response.json({ ok: true, to: homeFor(user) });
   }

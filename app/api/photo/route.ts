@@ -7,7 +7,7 @@ const MAX_BYTES = 4 * 1024 * 1024;
 
 export async function GET(request: Request) {
   const t = await readableTenant(request);
-  const photo = t === null ? null : readPhoto(t);
+  const photo = t === null ? null : await readPhoto(t);
   if (!photo) return new Response('No photo', { status: 404 });
   return new Response(new Uint8Array(photo.data), {
     headers: { 'Content-Type': photo.type, 'Cache-Control': 'public, max-age=31536000, immutable' },
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
   if (!looksLike(data, file.type)) return Response.json({ error: 'That file is not a valid image' }, { status: 400 });
 
   try {
-    writePhoto(data, file.type, t);
-    const d = readPortfolio(t);
-    const saved = writePortfolio({ ...d, profile: { ...d.profile, photo: Date.now().toString(36) } }, t);
+    await writePhoto(data, file.type, t);
+    const d = await readPortfolio(t);
+    const saved = await writePortfolio({ ...d, profile: { ...d.profile, photo: Date.now().toString(36) } }, t);
     revalidatePath(t ? `/${t}` : '/');
     return Response.json(saved);
   } catch (e) {
@@ -41,9 +41,9 @@ export async function DELETE() {
   const t = await editableTenant();
   if (t === null) return Response.json({ error: 'Not signed in' }, { status: 401 });
   try {
-    deletePhoto(t);
-    const d = readPortfolio(t);
-    const saved = writePortfolio({ ...d, profile: { ...d.profile, photo: '' } }, t);
+    await deletePhoto(t);
+    const d = await readPortfolio(t);
+    const saved = await writePortfolio({ ...d, profile: { ...d.profile, photo: '' } }, t);
     revalidatePath(t ? `/${t}` : '/');
     return Response.json(saved);
   } catch (e) {

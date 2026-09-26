@@ -11,9 +11,9 @@ import { publicView, readPortfolio, SLUG_RE, tenantExists } from '@/lib/store';
 type Props = { params: Promise<{ slug: string }> };
 
 async function load(slug: string) {
-  if (!SLUG_RE.test(slug) || !tenantExists(slug)) return null;
-  const member = findMemberBySlug(slug);
-  return { live: isLive(member), data: readPortfolio(slug) };
+  if (!SLUG_RE.test(slug) || !(await tenantExists(slug))) return null;
+  const member = await findMemberBySlug(slug);
+  return { live: isLive(member), data: await readPortfolio(slug) };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

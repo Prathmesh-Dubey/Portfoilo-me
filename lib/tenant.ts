@@ -11,7 +11,7 @@ import { SLUG_RE, tenantExists } from './store';
 export async function readableTenant(request: Request): Promise<string | null> {
   const u = new URL(request.url).searchParams.get('u') || '';
   if (!u) return '';
-  if (!SLUG_RE.test(u) || !tenantExists(u)) return null;
-  if (isLive(findMemberBySlug(u))) return u;
+  if (!SLUG_RE.test(u) || !(await tenantExists(u))) return null;
+  if (isLive(await findMemberBySlug(u))) return u;
   return (await currentUser())?.tenant === u ? u : null;
 }

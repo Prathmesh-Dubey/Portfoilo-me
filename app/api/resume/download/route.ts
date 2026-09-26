@@ -7,10 +7,10 @@ import { readableTenant } from '@/lib/tenant';
 export async function GET(request: Request) {
   const t = await readableTenant(request);
   if (t === null) return Response.json({ error: 'Not found' }, { status: 404 });
-  const data = readPortfolio(t);
+  const data = await readPortfolio(t);
   const filename = resumeFileName(data);
 
-  const uploaded = data.settings.resume.source === 'uploaded' ? readResumeUpload(t) : null;
+  const uploaded = data.settings.resume.source === 'uploaded' ? await readResumeUpload(t) : null;
   if (uploaded) return pdfResponse(uploaded, filename);
 
   try {

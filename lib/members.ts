@@ -1,9 +1,10 @@
 import 'server-only';
 import crypto from 'node:crypto';
+import { col, plain } from './db';
 import { hashPassword, newSalt } from './password';
-import { createMemberPortfolio, readJson, SLUG_RE, tenantExists, writeJson } from './store';
+import { createMemberPortfolio, SLUG_RE, tenantExists } from './store';
 
-// Paid memberships without a database: data/members.json (accounts) and data/payments.json (UPI payment requests).
+// Paid memberships: `members` (accounts, _id = slug) and `payments` (UPI payment requests, _id = id) in MongoDB.
 // Payments are made person-to-person over UPI, so the owner confirms each one in the admin panel.
 
 export type Plan = 'monthly' | 'yearly';
@@ -65,11 +66,19 @@ export function slugify(name: string) {
 
 // ---------- members ----------
 
-export const listMembers = () => readJson<Member[]>('members.json', []);
-const saveMembers = (m: Member[]) => writeJson('members.json', m);
-export const findMemberByEmail = (email: string) => listMembers().find((m) => m.email === normEmail(email));
-export const findMemberBySlug = (slug: string) => listMembers().find((m) => m.slug === slug);
-export const isLive = (m: Member | undefined) => Boolean(m && m.active && new Date(m.expiresAt).getTime() > Date.now());
+type MemberDoc = Member & { _id: string };
+const members = () => col<MemberDoc>('members');
+
+export const listMembers = async () => (await (await members()).find().sort({ createdAt: 1 }).toArray()).map((m) => plain<Member>(m)!);
+export const findMemberByEmail = async (email: string) => plain<Member>(await (await members()).findOne({ email: normEmail(email) }));
+export const findMemberBySlug = async (slug: string) => plain<Member>(await (await members()).findOne({ _id: String(slug) }));
+export const isLive = (m: Member | null | undefined) => Boolean(m && m.active && new Date(m.expiresAt).getTime() > Date.now());
+
+async function updateMember(filter: { _id: string } | { email: string }, set: Partial<Member>): Promise<Member> {
+  const m = await (await members()).findOneAndUpdate(filter, { $set: set }, { returnDocument: 'after' });
+  if (!m) throw new Error('No such member');
+  return plain<Member>(m)!;
+}
 
 export function addPlanTime(from: Date, plan: Plan) {
   const d = new Date(from);
@@ -84,111 +93,99 @@ function starterPassword(name: string) {
   return `${first}${crypto.randomInt(100, 1000)}`;
 }
 
-export function slugStatus(slug: string, email = ''): 'ok' | 'invalid' | 'taken' {
+export async function slugStatus(slug: string, email = ''): Promise<'ok' | 'invalid' | 'taken'> {
   if (!SLUG_RE.test(slug) || RESERVED.has(slug)) return 'invalid';
-  const owner = findMemberBySlug(slug);
+  const owner = await findMemberBySlug(slug);
   if (owner && owner.email !== normEmail(email)) return 'taken';
-  if (!owner && tenantExists(slug)) return 'taken';
-  const pending = listPayments().find((p) => p.slug === slug && (p.status === 'awaiting' || p.status === 'submitted') && p.email !== normEmail(email));
+  if (!owner && (await tenantExists(slug))) return 'taken';
+  const pending = await (await payments()).findOne({ slug, status: { $in: ['awaiting', 'submitted'] }, email: { $ne: normEmail(email) } });
   return pending ? 'taken' : 'ok';
 }
 
-export function setMemberPassword(email: string, password: string) {
-  const members = listMembers();
-  const m = members.find((x) => x.email === normEmail(email));
-  if (!m) throw new Error('No such member');
-  m.salt = newSalt();
-  m.hash = hashPassword(password, m.salt);
-  saveMembers(members);
+export async function setMemberPassword(email: string, password: string) {
+  const salt = newSalt();
+  await updateMember({ email: normEmail(email) }, { salt, hash: hashPassword(password, salt) });
 }
 
-export function resetMemberPassword(slug: string) {
-  const m = findMemberBySlug(slug);
+export async function resetMemberPassword(slug: string) {
+  const m = await findMemberBySlug(slug);
   if (!m) throw new Error('No such member');
   const password = starterPassword(m.name);
-  setMemberPassword(m.email, password);
+  await setMemberPassword(m.email, password);
   return { member: m, password };
 }
 
-export function renewMember(slug: string, plan: Plan) {
-  const members = listMembers();
-  const m = members.find((x) => x.slug === slug);
+export async function renewMember(slug: string, plan: Plan) {
+  const m = await findMemberBySlug(slug);
   if (!m) throw new Error('No such member');
   const base = new Date(Math.max(Date.now(), new Date(m.expiresAt).getTime()));
-  m.plan = plan;
-  m.expiresAt = addPlanTime(base, plan).toISOString();
-  m.active = true;
-  saveMembers(members);
-  return m;
+  return updateMember({ _id: slug }, { plan, expiresAt: addPlanTime(base, plan).toISOString(), active: true });
 }
 
-export function setMemberActive(slug: string, active: boolean) {
-  const members = listMembers();
-  const m = members.find((x) => x.slug === slug);
-  if (!m) throw new Error('No such member');
-  m.active = active;
-  saveMembers(members);
-  return m;
-}
+export const setMemberActive = (slug: string, active: boolean) => updateMember({ _id: String(slug) }, { active });
 
 // ---------- payment requests ----------
 
-export const listPayments = () => readJson<PaymentRequest[]>('payments.json', []);
-const savePayments = (p: PaymentRequest[]) => writeJson('payments.json', p);
+type PaymentDoc = Omit<PaymentRequest, 'id'> & { _id: string };
+const payments = () => col<PaymentDoc>('payments');
+const toRequest = ({ _id, ...p }: PaymentDoc): PaymentRequest => ({ id: _id, ...p });
+
+/** Newest first. */
+export const listPayments = async () => (await (await payments()).find().sort({ createdAt: -1 }).limit(2000).toArray()).map(toRequest);
+export const findPayment = async (id: string) => {
+  const p = await (await payments()).findOne({ _id: String(id) });
+  return p ? toRequest(p) : null;
+};
 
 const REF_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newRef = () => 'RM-' + Array.from({ length: 5 }, () => REF_CHARS[crypto.randomInt(REF_CHARS.length)]).join('');
 
 /** Step 1: the visitor tells us who they are before paying; the reference goes into the UPI payment note. */
-export function createPaymentRequest(input: { name: string; email: string; slug: string; plan: Plan }) {
-  const payments = listPayments();
+export async function createPaymentRequest(input: { name: string; email: string; slug: string; plan: Plan }): Promise<PaymentRequest> {
+  const coll = await payments();
   // reuse an unfinished request from the same email so refreshing doesn't pile up duplicates
-  const existing = payments.find((p) => p.email === input.email && p.status === 'awaiting');
-  const req: PaymentRequest = existing
-    ? { ...existing, ...input, amount: PRICES[input.plan] }
-    : { id: crypto.randomBytes(8).toString('hex'), ref: newRef(), ...input, amount: PRICES[input.plan], utr: '', status: 'awaiting', createdAt: new Date().toISOString() };
-  savePayments([req, ...payments.filter((p) => p.id !== req.id)].slice(0, 2000));
-  return req;
+  const existing = await coll.findOne({ email: input.email, status: 'awaiting' });
+  if (existing) {
+    const updated = await coll.findOneAndUpdate({ _id: existing._id }, { $set: { ...input, amount: PRICES[input.plan] } }, { returnDocument: 'after' });
+    return toRequest(updated!);
+  }
+  const req: PaymentDoc = { _id: crypto.randomBytes(8).toString('hex'), ref: newRef(), ...input, amount: PRICES[input.plan], utr: '', status: 'awaiting', createdAt: new Date().toISOString() };
+  await coll.insertOne(req);
+  return toRequest(req);
 }
 
 /** Step 3: after paying in their UPI app, the visitor submits the 12-digit UPI transaction ID (UTR). */
-export function submitUtr(id: string, email: string, utr: string) {
-  const payments = listPayments();
-  const p = payments.find((x) => x.id === id && x.email === normEmail(email));
+export async function submitUtr(id: string, email: string, utr: string): Promise<PaymentRequest> {
+  const coll = await payments();
+  const p = await coll.findOne({ _id: String(id), email: normEmail(email) });
   if (!p) throw new Error('Payment request not found. Please start again.');
-  if (p.status === 'approved') return p;
-  p.utr = utr;
-  p.status = 'submitted';
-  p.submittedAt = new Date().toISOString();
-  savePayments(payments);
-  return p;
+  if (p.status === 'approved') return toRequest(p);
+  const updated = await coll.findOneAndUpdate({ _id: p._id }, { $set: { utr, status: 'submitted', submittedAt: new Date().toISOString() } }, { returnDocument: 'after' });
+  return toRequest(updated!);
 }
 
 /**
  * Owner confirms the money arrived: create (or extend) the member account. New accounts get a starter password, unless
  * they already had a free account (`carry`): then they keep its password (if any) and stay signed in.
  */
-export function approvePayment(
+export async function approvePayment(
   id: string,
   carry?: { uid: string; salt: string; hash: string },
-): { member: Member; password: string | null; created: boolean; request: PaymentRequest } {
-  const payments = listPayments();
-  const p = payments.find((x) => x.id === id);
+): Promise<{ member: Member; password: string | null; created: boolean; request: PaymentRequest }> {
+  const p = await findPayment(id);
   if (!p) throw new Error('Payment request not found');
   if (p.status === 'approved') throw new Error('Already approved');
 
-  const members = listMembers();
-  let member = members.find((m) => m.email === p.email);
+  const existing = await findMemberByEmail(p.email);
+  let member: Member;
   let password: string | null = null;
   const now = new Date();
 
-  if (member) {
-    const base = new Date(Math.max(now.getTime(), new Date(member.expiresAt).getTime()));
-    member.plan = p.plan;
-    member.expiresAt = addPlanTime(base, p.plan).toISOString();
-    member.active = true;
+  if (existing) {
+    const base = new Date(Math.max(now.getTime(), new Date(existing.expiresAt).getTime()));
+    member = await updateMember({ email: existing.email }, { plan: p.plan, expiresAt: addPlanTime(base, p.plan).toISOString(), active: true });
   } else {
-    if (slugStatus(p.slug, p.email) !== 'ok') throw new Error(`The link /${p.slug} is no longer available. Edit the request's link first.`);
+    if ((await slugStatus(p.slug, p.email)) !== 'ok') throw new Error(`The link /${p.slug} is no longer available. Edit the request's link first.`);
     const salt = carry ? carry.salt : newSalt();
     if (!carry) password = starterPassword(p.name);
     member = {
@@ -204,37 +201,25 @@ export function approvePayment(
       expiresAt: addPlanTime(now, p.plan).toISOString(),
       active: true,
     };
-    if (!tenantExists(p.slug)) createMemberPortfolio(p.slug, p.name, p.email);
+    await (await members()).insertOne({ _id: member.slug, ...member });
+    if (!(await tenantExists(p.slug))) await createMemberPortfolio(p.slug, p.name, p.email);
   }
-  const created = !members.includes(member);
-  if (created) members.push(member);
-  saveMembers(members);
-  p.status = 'approved';
-  p.decidedAt = now.toISOString();
-  savePayments(payments);
-  return { member, password, created, request: p };
+  const decidedAt = now.toISOString();
+  await (await payments()).updateOne({ _id: p.id }, { $set: { status: 'approved', decidedAt } });
+  return { member, password, created: !existing, request: { ...p, status: 'approved', decidedAt } };
 }
 
-export function rejectPayment(id: string) {
-  const payments = listPayments();
-  const p = payments.find((x) => x.id === id);
-  if (!p) throw new Error('Payment request not found');
-  p.status = 'rejected';
-  p.decidedAt = new Date().toISOString();
-  savePayments(payments);
-  return p;
+export async function rejectPayment(id: string) {
+  const r = await (await payments()).updateOne({ _id: String(id) }, { $set: { status: 'rejected', decidedAt: new Date().toISOString() } });
+  if (!r.matchedCount) throw new Error('Payment request not found');
 }
 
 /** Undo a decision: put a rejected request back in the queue (it can then be approved normally). */
-export function reopenPayment(id: string) {
-  const payments = listPayments();
-  const p = payments.find((x) => x.id === id);
+export async function reopenPayment(id: string) {
+  const p = await findPayment(id);
   if (!p) throw new Error('Payment request not found');
   if (p.status === 'approved') throw new Error('Already approved. Use Members → +1 month / +1 year instead.');
-  p.status = p.utr ? 'submitted' : 'awaiting';
-  delete p.decidedAt;
-  savePayments(payments);
-  return p;
+  await (await payments()).updateOne({ _id: p.id }, { $set: { status: p.utr ? 'submitted' : 'awaiting' }, $unset: { decidedAt: '' } });
 }
 
 /** Who customers contact if their site isn't live in time (or for a refund). */
@@ -244,10 +229,11 @@ export const SUPPORT = {
 };
 
 /** Public, minimal status lookup for the /join page (never reveals passwords). */
-export function membershipStatus(email: string) {
+export async function membershipStatus(email: string) {
   const e = normEmail(email);
-  const member = findMemberByEmail(e);
-  const latest = listPayments().find((p) => p.email === e);
+  const member = await findMemberByEmail(e);
+  const latestDoc = await (await payments()).find({ email: e }).sort({ createdAt: -1 }).limit(1).next();
+  const latest = latestDoc ? toRequest(latestDoc) : null;
   return {
     member: member ? { slug: member.slug, plan: member.plan, expiresAt: member.expiresAt, live: isLive(member) } : null,
     request: latest ? { id: latest.id, ref: latest.ref, status: latest.status, plan: latest.plan, amount: latest.amount, slug: latest.slug } : null,
@@ -255,9 +241,10 @@ export function membershipStatus(email: string) {
 }
 
 /** For the owner's Members panel (no password hashes). */
-export function membersOverview() {
+export async function membersOverview() {
+  const [list, pays] = await Promise.all([listMembers(), listPayments()]);
   return {
-    members: listMembers().map((m) => ({
+    members: list.map((m) => ({
       slug: m.slug,
       name: m.name,
       email: m.email,
@@ -268,6 +255,6 @@ export function membersOverview() {
       active: m.active,
       live: isLive(m),
     })),
-    payments: listPayments(),
+    payments: pays,
   };
 }

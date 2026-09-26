@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (!/^https?:\/\//.test(url)) return new Response('Bad link', { status: 400 });
   const t = await readableTenant(request);
   if (t === null) return new Response('Not found', { status: 404 });
-  const projects = readPortfolio(t).projects;
+  const projects = (await readPortfolio(t)).projects;
 
   if (projects.some((p) => p.demo === url)) {
     return Response.redirect(`https://image.thum.io/get/width/1200/crop/750/noanimate/${url}`, 302);

@@ -1,14 +1,12 @@
 import 'server-only';
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { hashPassword, newSalt } from './password';
+import { col } from './db';
 import { normEmail, isEmail } from './members';
-import { readJson, writeJson } from './store';
+import { hashPassword, newSalt } from './password';
 
 // Free accounts: anyone can sign up (email code or Google) to keep their resume-builder draft on this site.
-// They get no portfolio and no admin access. Accounts live in data/users.json, drafts in data/resumes/<draftId>.json
-// (keyed by email, so a free user who later becomes a paid member keeps their draft).
+// They get no portfolio and no admin access. Accounts are in the `users` collection (_id = id), drafts in `resumes`
+// (_id derived from the email, so a free user who later becomes a paid member keeps their draft).
 
 export type AppUser = {
   id: string;
@@ -22,25 +20,29 @@ export type AppUser = {
   lastLoginAt?: string;
 };
 
-const RESUME_DIR = path.join(process.cwd(), 'data', 'resumes');
-const MAX_RESUME_BYTES = 200_000;
-const ID_RE = /^[a-f0-9]{16}$/;
-const draftFile = (email: string) =>
-  path.join(/*turbopackIgnore: true*/ RESUME_DIR, `${crypto.createHash('sha256').update(normEmail(email)).digest('hex').slice(0, 24)}.json`);
+type UserDoc = Omit<AppUser, 'id'> & { _id: string };
+type ResumeDoc = { _id: string; draft: unknown; at: Date };
 
-export const listUsers = () => readJson<AppUser[]>('users.json', []);
-const saveUsers = (u: AppUser[]) => writeJson('users.json', u);
-export const findUserByEmail = (email: string) => listUsers().find((u) => u.email === normEmail(email));
+const MAX_RESUME_BYTES = 200_000;
+const users = () => col<UserDoc>('users');
+const resumes = () => col<ResumeDoc>('resumes');
+const toUser = ({ _id, ...u }: UserDoc): AppUser => ({ id: _id, ...u });
+const draftId = (email: string) => crypto.createHash('sha256').update(normEmail(email)).digest('hex').slice(0, 24);
+
+export const listUsers = async () => (await (await users()).find().sort({ createdAt: -1 }).toArray()).map(toUser);
+export async function findUserByEmail(email: string) {
+  const u = await (await users()).findOne({ email: normEmail(email) });
+  return u ? toUser(u) : null;
+}
 
 /** Creates a free account (or returns the existing one for this email). */
-export function createUser(input: { name: string; email: string; salt?: string; hash?: string; provider: AppUser['provider'] }): AppUser {
+export async function createUser(input: { name: string; email: string; salt?: string; hash?: string; provider: AppUser['provider'] }): Promise<AppUser> {
   const email = normEmail(input.email);
   if (!isEmail(email)) throw new Error('Enter a valid email address');
-  const users = listUsers();
-  const existing = users.find((u) => u.email === email);
+  const existing = await findUserByEmail(email);
   if (existing) return existing;
-  const user: AppUser = {
-    id: crypto.randomBytes(8).toString('hex'),
+  const doc: UserDoc = {
+    _id: crypto.randomBytes(8).toString('hex'),
     name: input.name.trim().slice(0, 80) || email.split('@')[0],
     email,
     salt: input.hash ? input.salt || '' : '',
@@ -48,56 +50,45 @@ export function createUser(input: { name: string; email: string; salt?: string; 
     provider: input.provider,
     createdAt: new Date().toISOString(),
   };
-  saveUsers([...users, user]);
-  return user;
+  try {
+    await (await users()).insertOne(doc);
+  } catch (e) {
+    // two sign-ups for the same email at once: the unique index keeps just one
+    if ((e as { code?: number }).code === 11000) return (await findUserByEmail(email))!;
+    throw e;
+  }
+  return toUser(doc);
 }
 
-export function setUserPassword(email: string, password: string) {
-  const users = listUsers();
-  const u = users.find((x) => x.email === normEmail(email));
-  if (!u) throw new Error('No such account');
-  u.salt = newSalt();
-  u.hash = hashPassword(password, u.salt);
-  saveUsers(users);
+export async function setUserPassword(email: string, password: string) {
+  const salt = newSalt();
+  const r = await (await users()).updateOne({ email: normEmail(email) }, { $set: { salt, hash: hashPassword(password, salt) } });
+  if (!r.matchedCount) throw new Error('No such account');
 }
 
-export function touchUser(email: string) {
-  const users = listUsers();
-  const u = users.find((x) => x.email === normEmail(email));
-  if (!u) return;
-  u.lastLoginAt = new Date().toISOString();
-  saveUsers(users);
+export async function touchUser(email: string) {
+  await (await users()).updateOne({ email: normEmail(email) }, { $set: { lastLoginAt: new Date().toISOString() } });
 }
 
 /** Removes a free account. `keepResume` is used when the account was upgraded to a paid member. */
-export function deleteUser(id: string, keepResume = false) {
-  if (!ID_RE.test(id)) throw new Error('No such account');
-  const users = listUsers();
-  const u = users.find((x) => x.id === id);
+export async function deleteUser(id: string, keepResume = false) {
+  const u = await (await users()).findOneAndDelete({ _id: String(id) });
   if (!u) throw new Error('No such account');
-  saveUsers(users.filter((x) => x.id !== id));
-  if (!keepResume) fs.rmSync(draftFile(u.email), { force: true });
+  if (!keepResume) await (await resumes()).deleteOne({ _id: draftId(u.email) });
 }
 
-// ---------- the user's saved resume-builder draft ----------
+// ---------- the account's saved resume-builder draft ----------
 
-export function readUserResume(email: string): unknown {
-  try {
-    return JSON.parse(fs.readFileSync(draftFile(email), 'utf8'));
-  } catch {
-    return null;
-  }
+export async function readUserResume(email: string): Promise<unknown> {
+  return (await (await resumes()).findOne({ _id: draftId(email) }))?.draft ?? null;
 }
 
-export function writeUserResume(email: string, draft: unknown) {
-  const text = JSON.stringify(draft);
-  if (text.length > MAX_RESUME_BYTES) throw new Error('This resume is too large to save');
-  fs.mkdirSync(RESUME_DIR, { recursive: true });
-  const file = draftFile(email);
-  fs.writeFileSync(file + '.tmp', text);
-  fs.renameSync(file + '.tmp', file);
+export async function writeUserResume(email: string, draft: unknown) {
+  if (JSON.stringify(draft).length > MAX_RESUME_BYTES) throw new Error('This resume is too large to save');
+  await (await resumes()).replaceOne({ _id: draftId(email) }, { draft, at: new Date() }, { upsert: true });
 }
 
 /** For the owner's admin panel (no password hashes). */
-export const usersOverview = () =>
-  listUsers().map((u) => ({ id: u.id, name: u.name, email: u.email, provider: u.provider, createdAt: u.createdAt, lastLoginAt: u.lastLoginAt || '' }));
+export const usersOverview = async () =>
+  (await listUsers()).map((u) => ({ id: u.id, name: u.name, email: u.email, provider: u.provider, createdAt: u.createdAt, lastLoginAt: u.lastLoginAt || '' }));
+

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function JoinPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const plan = (await searchParams).plan === 'monthly' ? 'monthly' : 'yearly';
   const host = (await headers()).get('host') || 'reuseme';
-  const support = { whatsapp: SUPPORT.whatsapp, email: SUPPORT.email || adminEmail() };
+  const support = { whatsapp: SUPPORT.whatsapp, email: SUPPORT.email || (await adminEmail()) };
   // Signed-in free users and members pay with their own login email, filled in for them.
   const me = await currentUser();
   const account = me?.role === 'user' ? { name: me.user.name, email: me.email } : me?.role === 'member' ? { name: me.member.name, email: me.email } : null;

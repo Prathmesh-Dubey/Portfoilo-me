@@ -4,7 +4,7 @@ import { renderResume, resumeFileName } from '@/lib/pdf/render';
 
 // Public resume builder: visitors post their own details and get a PDF back. Nothing is stored.
 export async function POST(request: Request) {
-  if (limited(`build:${clientIp(request)}`, 60, 10 * 60 * 1000)) {
+  if (await limited(`build:${clientIp(request)}`, 60, 10 * 60 * 1000)) {
     return Response.json({ error: 'Too many requests. Wait a minute and try again.' }, { status: 429 });
   }
   if (Number(request.headers.get('content-length') || 0) > 200_000) return Response.json({ error: 'Too much content' }, { status: 413 });

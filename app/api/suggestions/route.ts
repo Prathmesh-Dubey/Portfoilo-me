@@ -6,7 +6,7 @@ const clip = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max);
 
 // Visitors send suggestions; they land in the admin Inbox and (if email is set up) in your Gmail.
 export async function POST(request: Request) {
-  if (limited(`suggest:${clientIp(request)}`, 5, 60 * 60 * 1000)) {
+  if (await limited(`suggest:${clientIp(request)}`, 5, 60 * 60 * 1000)) {
     return Response.json({ error: 'Thanks! You have sent a few already. Please try again later.' }, { status: 429 });
   }
   const body = await request.json().catch(() => ({}));
@@ -18,12 +18,12 @@ export async function POST(request: Request) {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: 'That email address looks wrong' }, { status: 400 });
 
   try {
-    addSuggestion({ name, email, message });
+    await addSuggestion({ name, email, message });
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }
   sendMail(
-    adminEmail(),
+    await adminEmail(),
     `New suggestion on your portfolio${name ? ` from ${name}` : ''}`,
     `${message}\n\n- ${name || 'Anonymous'}${email ? ` <${email}>` : ''}`,
     email || undefined,
@@ -33,11 +33,11 @@ export async function POST(request: Request) {
 
 export async function GET() {
   if (!(await isAdmin())) return Response.json({ error: 'Not signed in' }, { status: 401 });
-  return Response.json(readSuggestions());
+  return Response.json(await readSuggestions());
 }
 
 export async function DELETE(request: Request) {
   if (!(await isAdmin())) return Response.json({ error: 'Not signed in' }, { status: 401 });
-  deleteSuggestion(new URL(request.url).searchParams.get('id') || '');
-  return Response.json(readSuggestions());
+  await deleteSuggestion(new URL(request.url).searchParams.get('id') || '');
+  return Response.json(await readSuggestions());
 }

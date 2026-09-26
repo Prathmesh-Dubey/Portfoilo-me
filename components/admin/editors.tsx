@@ -272,7 +272,7 @@ export function projectEditor(ctx: AdminCtx, id: string | null): EditorSpec {
       ? {
           label: 'Delete project',
           onClick: async () => {
-            if (!confirm(`Delete “${existing.name}”? This can't be undone from the site (a backup is kept in data/backups).`)) throw new Error('cancel');
+            if (!confirm(`Delete “${existing.name}”? This can't be undone from the site (a backup of the previous version is kept).`)) throw new Error('cancel');
             const cur = ctx.latest();
             return ctx.save({ ...cur, projects: cur.projects.filter((p) => p.id !== existing.id) }, 'Project deleted');
           },

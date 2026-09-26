@@ -7,7 +7,7 @@ import { readUserResume, writeUserResume } from '@/lib/users';
 export async function GET() {
   const me = await currentUser();
   if (!me || me.role === 'owner') return Response.json({ error: 'Not signed in' }, { status: 401 });
-  return Response.json({ draft: readUserResume(me.email) });
+  return Response.json({ draft: await readUserResume(me.email) });
 }
 
 export async function PUT(request: Request) {
@@ -16,7 +16,7 @@ export async function PUT(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.draft !== 'object' || !body.draft?.basics) return Response.json({ error: 'Invalid resume' }, { status: 400 });
   try {
-    writeUserResume(me.email, body.draft);
+    await writeUserResume(me.email, body.draft);
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 400 });
   }

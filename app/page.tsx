@@ -7,7 +7,7 @@ import { skillIcons } from '@/lib/skillIcons';
 import { publicView, readPortfolio } from '@/lib/store';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { profile, summary } = readPortfolio();
+  const { profile, summary } = await readPortfolio();
   return {
     title: `${profile.name} — ${profile.title.replace(/\s*\|\s*/g, ' · ')}`,
     description: profile.tagline || summary,
@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   await connection(); // always read the latest saved content
-  const data = publicView(readPortfolio());
+  const data = publicView(await readPortfolio());
   return (
     <>
       {/* Phones see the ReuseMe landing first; desktop goes straight to the portfolio (CSS decides). */}

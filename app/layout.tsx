@@ -25,9 +25,9 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default async function RootLayout({ children }: LayoutProps<'/'>) {
   // Applies the visitor's saved light/dark choice (or the owner's default) before first paint — no flash.
-  const fallback = JSON.stringify(readPortfolio().settings.site.theme);
+  const fallback = JSON.stringify(await readPortfolio().then((d) => d.settings.site.theme, () => 'light'));
   const themeScript = `(function(){var t;try{t=localStorage.getItem('pf-theme')}catch(e){}document.documentElement.dataset.theme=t||${fallback}})()`;
   // Launch splash: plays on app launch / first view of a browser session, skipped (before paint) afterwards.
   const splashScript = `try{if(sessionStorage.getItem('rm-splash'))document.documentElement.classList.add('no-splash');else sessionStorage.setItem('rm-splash','1');if(sessionStorage.getItem('rm-preview'))document.documentElement.classList.add('rm-preview')}catch(e){}`;

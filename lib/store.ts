@@ -1,50 +1,59 @@
 import 'server-only';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import { Binary } from 'mongodb';
+import { cache } from 'react';
+import { col, OWNER } from './db';
 import { normalize, UPLOAD_RE } from './normalize';
 import type { Portfolio } from './types';
 
-// No database: every portfolio is a folder of plain files.
-//   data/                 → the owner's site (portfolio.json, photo, uploads/, resume.pdf, backups/)
-//   data/members/<slug>/  → a member's site, same layout
+// Every portfolio is one MongoDB document (see lib/db.ts); its photo, uploaded resume and screenshots are in `files`.
 // A "tenant" is '' for the owner or a member's slug.
 export type Tenant = string;
 
-const DATA_DIR = path.join(process.cwd(), 'data');
 const MAX_BACKUPS = 30;
-
 export const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$/;
-const dirOf = (t: Tenant) => {
-  if (!t) return DATA_DIR;
+
+const tid = (t: Tenant) => {
+  if (!t) return OWNER;
   if (!SLUG_RE.test(t)) throw new Error('Invalid portfolio name');
-  return path.join(/*turbopackIgnore: true*/ DATA_DIR, 'members', t);
+  return t;
 };
-const fileOf = (t: Tenant, name: string) => path.join(/*turbopackIgnore: true*/ dirOf(t), name);
 
-export const tenantExists = (t: Tenant) => fs.existsSync(fileOf(t, 'portfolio.json'));
+type PortfolioDoc = { _id: string; data: Portfolio };
+type BackupDoc = { tenant: string; at: Date; data: Portfolio };
+type FileDoc = { _id: string; tenant: string; name: string; type: string; data: Binary; at: Date };
 
-export function readPortfolio(t: Tenant = ''): Portfolio {
-  return normalize(JSON.parse(fs.readFileSync(fileOf(t, 'portfolio.json'), 'utf8')));
+const portfolios = () => col<PortfolioDoc>('portfolios');
+const backups = () => col<BackupDoc>('backups');
+const files = () => col<FileDoc>('files');
+
+export async function tenantExists(t: Tenant) {
+  return (await (await portfolios()).countDocuments({ _id: tid(t) }, { limit: 1 })) > 0;
 }
 
-export function writePortfolio(next: unknown, t: Tenant = ''): Portfolio {
+/** Cached per request, so the layout, metadata and page share one database read. */
+export const readPortfolio = cache(async (t: Tenant = ''): Promise<Portfolio> => {
+  const doc = await (await portfolios()).findOne({ _id: tid(t) });
+  if (doc) return normalize(doc.data);
+  if (!t) return normalize(seedOwner()); // brand-new database: start from the bundled data/portfolio.json
+  throw new Error('Portfolio not found');
+});
+
+export async function writePortfolio(next: unknown, t: Tenant = ''): Promise<Portfolio> {
+  const id = tid(t);
   const clean = { ...normalize(next), updatedAt: new Date().toISOString() };
-  const file = fileOf(t, 'portfolio.json');
-  try {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    backup(t);
-    fs.writeFileSync(file + '.tmp', JSON.stringify(clean, null, 2));
-    fs.renameSync(file + '.tmp', file);
-  } catch (e) {
-    throw storageError(e);
-  }
-  pruneUploads(clean, t);
+  const coll = await portfolios();
+  const previous = await coll.findOne({ _id: id });
+  if (previous) await backup(id, previous.data);
+  await coll.replaceOne({ _id: id }, { data: clean }, { upsert: true });
+  await pruneUploads(clean, id).catch(() => {});
   return clean;
 }
 
 /** Starter portfolio for a new member: their name and email, everything else for them to fill in. */
-export function createMemberPortfolio(slug: string, name: string, email: string): Portfolio {
+export function createMemberPortfolio(slug: string, name: string, email: string): Promise<Portfolio> {
   return writePortfolio(
     {
       profile: {
@@ -69,51 +78,43 @@ export function publicView(d: Portfolio): Portfolio {
   return d.profile.showPhoneOnSite ? d : { ...d, profile: { ...d.profile, phone: '' } };
 }
 
+// ---------- stored files (photo, uploaded resume, screenshots) ----------
+
+async function readFile(t: Tenant, name: string): Promise<{ data: Buffer; type: string } | null> {
+  const doc = await (await files()).findOne({ _id: `${tid(t)}:${name}` });
+  return doc ? { data: Buffer.from(doc.data.buffer), type: doc.type } : null;
+}
+
+async function writeFile(t: Tenant, name: string, type: string, data: Buffer) {
+  const id = tid(t);
+  await (await files()).replaceOne({ _id: `${id}:${name}` }, { tenant: id, name, type, data: new Binary(data), at: new Date() }, { upsert: true });
+}
+
+async function deleteFile(t: Tenant, name: string) {
+  await (await files()).deleteOne({ _id: `${tid(t)}:${name}` });
+}
+
 // ---------- photo ----------
 
 const PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png' } as const;
 export type PhotoType = keyof typeof PHOTO_TYPES;
 export const isPhotoType = (t: string): t is PhotoType => t in PHOTO_TYPES;
 
-export function readPhoto(t: Tenant = ''): { data: Buffer; type: PhotoType } | null {
-  for (const [type, ext] of Object.entries(PHOTO_TYPES)) {
-    const file = fileOf(t, `photo.${ext}`);
-    if (fs.existsSync(file)) return { data: fs.readFileSync(file), type: type as PhotoType };
-  }
-  return null;
+export async function readPhoto(t: Tenant = ''): Promise<{ data: Buffer; type: PhotoType } | null> {
+  const f = await readFile(t, 'photo');
+  return f && isPhotoType(f.type) ? { data: f.data, type: f.type } : null;
 }
 
-export function writePhoto(data: Buffer, type: PhotoType, t: Tenant = '') {
-  try {
-    deletePhoto(t);
-    fs.writeFileSync(fileOf(t, `photo.${PHOTO_TYPES[type]}`), data);
-  } catch (e) {
-    throw storageError(e);
-  }
-}
-
-export function deletePhoto(t: Tenant = '') {
-  for (const ext of Object.values(PHOTO_TYPES)) fs.rmSync(fileOf(t, `photo.${ext}`), { force: true });
-}
+export const writePhoto = (data: Buffer, type: PhotoType, t: Tenant = '') => writeFile(t, 'photo', type, data);
+export const deletePhoto = (t: Tenant = '') => deleteFile(t, 'photo');
 
 // ---------- uploaded resume PDF ----------
 
-export const readResumeUpload = (t: Tenant = ''): Buffer | null => {
-  const f = fileOf(t, 'resume.pdf');
-  return fs.existsSync(f) ? fs.readFileSync(f) : null;
-};
+export const readResumeUpload = async (t: Tenant = ''): Promise<Buffer | null> => (await readFile(t, 'resume.pdf'))?.data ?? null;
+export const writeResumeUpload = (data: Buffer, t: Tenant = '') => writeFile(t, 'resume.pdf', 'application/pdf', data);
+export const deleteResumeUpload = (t: Tenant = '') => deleteFile(t, 'resume.pdf');
 
-export function writeResumeUpload(data: Buffer, t: Tenant = '') {
-  try {
-    fs.writeFileSync(fileOf(t, 'resume.pdf'), data);
-  } catch (e) {
-    throw storageError(e);
-  }
-}
-
-export const deleteResumeUpload = (t: Tenant = '') => fs.rmSync(fileOf(t, 'resume.pdf'), { force: true });
-
-// ---------- project screenshots (<tenant dir>/uploads) ----------
+// ---------- project screenshots ----------
 
 const UPLOAD_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' } as const;
 export type UploadType = keyof typeof UPLOAD_TYPES;
@@ -127,110 +128,63 @@ export function looksLike(data: Buffer, type: string) {
   return false;
 }
 
-export function saveUpload(data: Buffer, type: UploadType, t: Tenant = ''): string {
+export async function saveUpload(data: Buffer, type: UploadType, t: Tenant = ''): Promise<string> {
   const name = `${Date.now().toString(36)}-${crypto.randomBytes(5).toString('hex')}.${UPLOAD_TYPES[type]}`;
-  try {
-    fs.mkdirSync(fileOf(t, 'uploads'), { recursive: true });
-    fs.writeFileSync(path.join(/*turbopackIgnore: true*/ fileOf(t, 'uploads'), name), data);
-  } catch (e) {
-    throw storageError(e);
-  }
+  await writeFile(t, `uploads/${name}`, type, data);
   return `/api/uploads/${name}${t ? `?u=${t}` : ''}`;
 }
 
-export function readUpload(name: string, t: Tenant = ''): { data: Buffer; type: string } | null {
+export async function readUpload(name: string, t: Tenant = ''): Promise<{ data: Buffer; type: string } | null> {
   if (!/^[\w-]+\.(jpg|png|webp)$/.test(name)) return null;
-  const file = path.join(/*turbopackIgnore: true*/ fileOf(t, 'uploads'), name);
-  if (!fs.existsSync(file)) return null;
-  const ext = name.split('.').pop()!;
-  const type = Object.entries(UPLOAD_TYPES).find(([, e]) => e === ext)![0];
-  return { data: fs.readFileSync(file), type };
+  return readFile(t, `uploads/${name}`);
 }
 
 /** Deletes screenshots no project uses any more (after a day, so a just-uploaded image isn't lost before saving). */
-function pruneUploads(d: Portfolio, t: Tenant) {
-  try {
-    const dir = fileOf(t, 'uploads');
-    const used = new Set(d.projects.flatMap((p) => p.images).filter((u) => UPLOAD_RE.test(u)).map((u) => u.split('?')[0].split('/').pop()));
-    for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
-      const full = path.join(/*turbopackIgnore: true*/ dir, f);
-      if (!used.has(f) && Date.now() - fs.statSync(full).mtimeMs > 24 * 60 * 60 * 1000) fs.rmSync(full);
-    }
-  } catch {
-    /* best effort */
-  }
+async function pruneUploads(d: Portfolio, id: string) {
+  const used = d.projects
+    .flatMap((p) => p.images)
+    .filter((u) => UPLOAD_RE.test(u))
+    .map((u) => `${id}:uploads/${u.split('?')[0].split('/').pop()}`);
+  await (await files()).deleteMany({ tenant: id, name: /^uploads\//, _id: { $nin: used }, at: { $lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
 }
 
-// ---------- visitor suggestions (owner only: data/suggestions.json) ----------
+// ---------- backups (last 30 versions of each portfolio) ----------
+
+async function backup(id: string, data: Portfolio) {
+  const coll = await backups();
+  await coll.insertOne({ tenant: id, at: new Date(), data });
+  const old = await coll.find({ tenant: id }, { projection: { _id: 1 } }).sort({ at: -1 }).skip(MAX_BACKUPS).toArray();
+  if (old.length) await coll.deleteMany({ _id: { $in: old.map((b) => b._id) } });
+}
+
+// ---------- visitor suggestions (owner only) ----------
 
 export type Suggestion = { id: string; name: string; email: string; message: string; at: string };
-const SUGGESTIONS_FILE = path.join(DATA_DIR, 'suggestions.json');
+type SuggestionDoc = Omit<Suggestion, 'id'> & { _id: string };
+const suggestions = () => col<SuggestionDoc>('suggestions');
 
-export function readSuggestions(): Suggestion[] {
-  try {
-    return JSON.parse(fs.readFileSync(SUGGESTIONS_FILE, 'utf8'));
-  } catch {
-    return [];
-  }
+export async function readSuggestions(): Promise<Suggestion[]> {
+  const list = await (await suggestions()).find().sort({ at: -1 }).limit(500).toArray();
+  return list.map(({ _id, ...s }) => ({ id: _id, ...s }));
 }
 
-function writeSuggestions(list: Suggestion[]) {
-  try {
-    fs.writeFileSync(SUGGESTIONS_FILE, JSON.stringify(list, null, 2));
-  } catch (e) {
-    throw storageError(e);
-  }
-}
-
-export function addSuggestion(s: Omit<Suggestion, 'id' | 'at'>): Suggestion {
+export async function addSuggestion(s: Omit<Suggestion, 'id' | 'at'>): Promise<Suggestion> {
   const item = { ...s, id: crypto.randomBytes(6).toString('hex'), at: new Date().toISOString() };
-  writeSuggestions([item, ...readSuggestions()].slice(0, 500));
+  const { id, ...rest } = item;
+  await (await suggestions()).insertOne({ _id: id, ...rest });
   return item;
 }
 
-export function deleteSuggestion(id: string) {
-  writeSuggestions(readSuggestions().filter((s) => s.id !== id));
+export async function deleteSuggestion(id: string) {
+  await (await suggestions()).deleteOne({ _id: String(id) });
 }
 
-// ---------- small JSON-file helpers (used by lib/members.ts) ----------
+// ---------- first run ----------
 
-export function readJson<T>(name: string, fallback: T): T {
+function seedOwner(): unknown {
   try {
-    return JSON.parse(fs.readFileSync(path.join(/*turbopackIgnore: true*/ DATA_DIR, name), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'portfolio.json'), 'utf8'));
   } catch {
-    return fallback;
+    return {};
   }
-}
-
-export function writeJson(name: string, value: unknown) {
-  const file = path.join(/*turbopackIgnore: true*/ DATA_DIR, name);
-  try {
-    fs.writeFileSync(file + '.tmp', JSON.stringify(value, null, 2));
-    fs.renameSync(file + '.tmp', file);
-  } catch (e) {
-    throw storageError(e);
-  }
-}
-
-// ---------- internals ----------
-
-function backup(t: Tenant) {
-  const file = fileOf(t, 'portfolio.json');
-  if (!fs.existsSync(file)) return;
-  const dir = fileOf(t, 'backups');
-  fs.mkdirSync(dir, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  fs.copyFileSync(file, path.join(/*turbopackIgnore: true*/ dir, `portfolio-${stamp}.json`));
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
-  for (const f of files.slice(0, Math.max(0, files.length - MAX_BACKUPS))) fs.rmSync(path.join(/*turbopackIgnore: true*/ dir, f));
-}
-
-function storageError(e: unknown) {
-  const code = (e as NodeJS.ErrnoException)?.code;
-  if (code === 'EROFS' || code === 'EACCES' || code === 'EPERM') {
-    return new Error(
-      'This server cannot write to its disk (serverless hosts like Vercel are read-only). Run the site with `npm start` on a normal server/VPS, or edit locally and redeploy.',
-    );
-  }
-  return e instanceof Error ? e : new Error(String(e));
 }

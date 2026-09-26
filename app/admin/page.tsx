@@ -15,7 +15,7 @@ export default async function AdminPage() {
   const user = await currentUser();
   if (!user) return <Login googleClientId={googleClientId()} />;
   if (user.role === 'user') redirect('/resume-builder');
-  const data = readPortfolio(user.tenant);
+  const data = await readPortfolio(user.tenant);
   const icons = skillIcons(data.skills.flatMap((g) => g.items));
   if (user.role === 'owner') return <Portfolio initial={data} admin adminEmail={user.email} skillIcons={icons} />;
   const m = user.member;

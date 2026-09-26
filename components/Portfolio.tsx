@@ -900,7 +900,7 @@ function AdminDock({
     try {
       const json = JSON.parse(await file.text());
       if (!json.profile || !Array.isArray(json.projects)) throw new Error('That file is not a portfolio backup');
-      if (!confirm('Replace all current content with this backup? (The current version is kept in data/backups.)')) return;
+      if (!confirm('Replace all current content with this backup? (The current version is kept as a backup.)')) return;
       await ctx.save({ ...json, updatedAt: ctx.latest().updatedAt }, 'Backup restored');
     } catch (e) {
       ctx.notify((e as Error).message, 'error');

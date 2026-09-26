@@ -33,7 +33,7 @@ const CACHE_SIZE = 24;
  */
 export async function renderResume(d: Portfolio, tenant = ''): Promise<ResumeResult> {
   registerFonts();
-  const raw = d.settings.resume.showPhoto && d.profile.photo ? readPhoto(tenant) : null;
+  const raw = d.settings.resume.showPhoto && d.profile.photo ? await readPhoto(tenant) : null;
   const photo: Photo = raw ? { data: raw.data, format: raw.type === 'image/png' ? 'png' : 'jpg' } : null;
 
   const key = crypto.createHash('sha1').update(JSON.stringify({ ...d, updatedAt: '' })).update(raw?.data ?? '').digest('hex');

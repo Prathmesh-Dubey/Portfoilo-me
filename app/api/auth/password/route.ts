@@ -5,10 +5,10 @@ export async function POST(request: Request) {
   const user = await currentUser();
   if (!user) return Response.json({ error: 'Not signed in' }, { status: 401 });
   const { current = '', next = '' } = await request.json().catch(() => ({}));
-  if (!checkCredentials(user.email, String(current))) return Response.json({ error: 'Current password is wrong' }, { status: 400 });
+  if (!(await checkCredentials(user.email, String(current)))) return Response.json({ error: 'Current password is wrong' }, { status: 400 });
   if (String(next).length < MIN_PASSWORD) return Response.json({ error: `New password must be at least ${MIN_PASSWORD} characters` }, { status: 400 });
   try {
-    setPassword(user.email, String(next));
+    await setPassword(user.email, String(next));
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }

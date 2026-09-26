@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const t = await readableTenant(request);
   if (t === null) return Response.json({ error: 'Not found' }, { status: 404 });
   const params = new URL(request.url).searchParams;
-  const saved = readPortfolio(t);
+  const saved = await readPortfolio(t);
   const template = params.get('template');
   const data: Portfolio =
     template === 'classic' || template === 'creative'
