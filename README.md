@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfolio + one-click resume
 
-## Getting Started
+Next.js app: a public portfolio, an admin editor at `/admin`, and a resume PDF generated from the same content.
+No database: everything lives in files under `data/` — `portfolio.json` (content), `photo.jpg|png`, `uploads/` (project screenshots), `admin.json` (hashed password), `suggestions.json`, `resume.pdf` (your uploaded resume, if any).
+Saves carry a version stamp, so an out-of-date tab can't overwrite newer changes; it reloads the latest data instead.
 
-First, run the development server:
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000   (admin: /admin)
+npm run build && npm start   # production
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Admin login
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Sign in at `/admin` with the email + password from `.env.local` (`ADMIN_EMAIL`, `ADMIN_PASSWORD`).
+On first sign-in they are copied into `data/admin.json` (password stored hashed). After that:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Change password**: admin dock → More → Account & password (needs the current password).
+- **Forgot password**: "Forgot password?" on the sign-in page → a 6-digit code is emailed to the admin Gmail
+  (valid 15 minutes) → enter it with a new password.
+- Delete `data/admin.json` to go back to the values in `.env.local`.
 
-## Learn More
+### Email (for reset codes and suggestion alerts)
 
-To learn more about Next.js, take a look at the following resources:
+Fill `SMTP_PASS` in `.env.local` with a Gmail **App Password** (Google Account → Security → 2-Step Verification → App passwords).
+Until then, reset codes are printed in the terminal running the server, and suggestions only appear in the admin Inbox.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## What you can edit (at /admin)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Every section** has an Edit button: profile & links, about, skills, experience, education, certifications/achievements.
+- **Projects**: unlimited. Each has a *Live / deployed URL*, a *GitHub repo URL*, any number of extra links, and optional screenshots (upload or paste a URL).
+  Card preview: your screenshot → otherwise a live capture of the deployed site's front page → otherwise the GitHub repo card.
+  Clicking the preview opens the live site, or the GitHub repo when there's no deployment.
+- **User view**: the dock's *User view* button (or the toast after any save) shows the page exactly as visitors see it.
+- **Inbox**: suggestions visitors send from the *Suggest* section.
+- **Which resume visitors download** (Resume PDF panel, top): *Website resume* (generated from the site) or *My uploaded PDF*
+  (upload any PDF, e.g. one made in Word). The hero "Download resume" and navbar "My resume" buttons follow this choice.
+- **Resume PDF** (dock → "Resume PDF"): pick the template (Creative / Classic ATS), paper (Letter/A4), accent colour,
+  and the **3 projects** that go on the resume. The preview is the real PDF file visitors download.
+- **Backup / Restore** download or restore the whole site as JSON. Every save also keeps a copy in `data/backups/` (last 30).
 
-## Deploy on Vercel
+## For visitors
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Build your resume** (`/resume-builder`): anyone can fill in their details, preview live and download a PDF made with the same templates. Their draft stays in their own browser; nothing is stored on the server.
+- **Suggest**: a form that sends suggestions to you (admin Inbox + Gmail when email is set up). Rate-limited with a hidden bot trap.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Resume accuracy check
+
+```bash
+npm run verify:resume -- http://localhost:3000
+```
+
+Extracts the text from the generated PDF and confirms every field is printed character-for-character, that
+unselected projects are absent, that links are clickable, and that "fit on one page" produced one page.
+
+## Hosting
+
+Saving writes to disk, so host it on anything that runs `npm start` with a writable folder (VPS, Railway, Render with a disk…).
+On read-only serverless hosts (Vercel/Netlify) the site and PDF work, but admin saves can't persist — edit locally,
+commit `data/`, and redeploy.

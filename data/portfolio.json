@@ -1,0 +1,245 @@
+{
+  "updatedAt": "2026-09-26T12:55:47.714Z",
+  "profile": {
+    "name": "Prathmesh Dubey",
+    "title": "AI/ML Engineer  |  Full-Stack Software Engineer",
+    "tagline": "I build AI-powered, production-grade web apps — wiring Large Language Models into real product workflows on a solid Java, Spring Boot, Python and React foundation.",
+    "location": "Pune, Maharashtra, India",
+    "phone": "+91 9302622997",
+    "email": "prathmdubey217@gmail.com",
+    "photo": "muidm2od",
+    "available": true,
+    "showPhoneOnSite": true,
+    "links": [
+      {
+        "label": "LinkedIn",
+        "url": "https://linkedin.com/in/prathmesh-dubey-19418b361",
+        "showOnResume": true
+      },
+      {
+        "label": "GitHub",
+        "url": "https://github.com/Prathmesh-Dubey",
+        "showOnResume": true
+      }
+    ]
+  },
+  "summary": "Software engineer with hands-on experience shipping AI-powered, production-grade web applications. Specialize in integrating Large Language Models (OpenAI, DeepSeek) into real product workflows, including prompt engineering, retrieval-augmented generation (RAG) and AI agent design, on a strong full-stack base of Java, Spring Boot, Python, React and Next.js. Own features end to end, from REST API and data modeling to responsive UI.",
+  "about": "",
+  "skills": [
+    {
+      "category": "Languages",
+      "items": [
+        "Python",
+        "Java",
+        "JavaScript",
+        "TypeScript",
+        "SQL",
+        "C",
+        "C++"
+      ]
+    },
+    {
+      "category": "AI / ML",
+      "items": [
+        "Large Language Model (LLM) API Integration (OpenAI, DeepSeek)",
+        "Prompt Engineering",
+        "Retrieval-Augmented Generation (RAG)",
+        "Vector Databases",
+        "Embeddings & Semantic Search",
+        "AI Agent Development",
+        "NLP",
+        "LLM Output Validation"
+      ]
+    },
+    {
+      "category": "Backend",
+      "items": [
+        "Spring Boot",
+        "Node.js",
+        "FastAPI",
+        "RESTful API Design",
+        "OAuth 2.0",
+        "Webhooks",
+        "JWT Authentication"
+      ]
+    },
+    {
+      "category": "Frontend",
+      "items": [
+        "React.js",
+        "Next.js",
+        "Tailwind CSS",
+        "HTML5",
+        "CSS3",
+        "Bootstrap"
+      ]
+    },
+    {
+      "category": "Databases",
+      "items": [
+        "MySQL",
+        "PostgreSQL",
+        "MongoDB",
+        "Vector Databases",
+        "Schema Design & Query Optimization"
+      ]
+    },
+    {
+      "category": "Tools & Concepts",
+      "items": [
+        "Git",
+        "GitHub",
+        "GitHub REST API",
+        "Postman",
+        "VS Code",
+        "Agile / Scrum",
+        "Data Structures & Algorithms",
+        "OOP",
+        "System Design Fundamentals"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "id": "exp-chedo",
+      "role": "Software Engineer Intern",
+      "company": "Chedo Tech",
+      "location": "",
+      "start": "Mar 2026",
+      "end": "Present",
+      "tech": [
+        "Java",
+        "Spring Boot",
+        "React.js",
+        "Next.js",
+        "Python",
+        "MySQL",
+        "MongoDB",
+        "LLM APIs"
+      ],
+      "bullets": [
+        "Build and ship production features across Spring Boot back-end services and React/Next.js front-ends, owning assigned modules from requirement to release.",
+        "Design and implement secure REST APIs with authentication, validation and error handling, documented for other developers to integrate against.",
+        "Integrate LLM APIs into product workflows and iterate on prompt design to improve the accuracy and consistency of generated output.",
+        "Optimize MySQL and MongoDB schemas and queries and debug production issues, working in an Agile team with Git-based branching and peer code review."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-medsync",
+      "name": "MedSyncAI",
+      "subtitle": "AI-Assisted Healthcare Platform",
+      "start": "Jan 2026",
+      "end": "Present",
+      "tech": [
+        "React",
+        "Tailwind CSS",
+        "Spring Boot",
+        "Java",
+        "MongoDB",
+        "DeepSeek API"
+      ],
+      "summary": "A full-stack clinic platform that centralizes patient records, prescriptions and daily operations, with a DeepSeek-powered assistant grounded in the clinic's own data.",
+      "bullets": [
+        "Engineered a full-stack platform centralizing patient records, prescriptions and daily clinic operations, with role-based access separating doctor, staff and patient views of sensitive medical data.",
+        "Integrated a DeepSeek-powered assistant answering clinical and administrative queries in real time, using prompt templates and context injection to keep responses grounded in the clinic's own records."
+      ],
+      "demo": "https://med-sync-ai.vercel.app/",
+      "repo": "https://github.com/Prathmesh-Dubey/MedSyncAI",
+      "links": [],
+      "images": [],
+      "autoPreview": true,
+      "featured": true
+    },
+    {
+      "id": "proj-codereview",
+      "name": "AI-Powered Code Review Assistant",
+      "subtitle": "Developer Tooling",
+      "start": "Oct 2025",
+      "end": "Jan 2026",
+      "tech": [
+        "Next.js",
+        "Spring Boot",
+        "GitHub REST API",
+        "LLM API",
+        "OAuth 2.0",
+        "Webhooks"
+      ],
+      "summary": "An LLM-driven reviewer that reads GitHub pull requests and posts line-anchored comments on bugs, anti-patterns and style issues.",
+      "bullets": [
+        "Built an LLM-driven tool that analyzes GitHub pull requests and auto-posts review comments flagging bugs, anti-patterns and style violations, cutting manual review effort for small teams.",
+        "Engineered the prompt pipeline converting raw diffs into line-anchored feedback, plus GitHub OAuth and webhook listeners for secure, event-driven PR processing."
+      ],
+      "demo": "",
+      "repo": "",
+      "links": [],
+      "images": [],
+      "autoPreview": true,
+      "featured": true
+    },
+    {
+      "id": "proj-recipe",
+      "name": "Smart Recipe Generator",
+      "subtitle": "Generative AI Web App",
+      "start": "Jan 2026",
+      "end": "Apr 2026",
+      "tech": [
+        "React",
+        "Node.js",
+        "OpenAI / DeepSeek API"
+      ],
+      "summary": "Turns whatever ingredients you have into a complete recipe with step-by-step instructions and prep-time estimates.",
+      "bullets": [
+        "Developed a generative-AI web app turning free-text ingredient input into complete recipes with step-by-step instructions and prep-time estimates.",
+        "Designed structured prompts with output validation, served through a responsive React interface with loading and error states around the API calls."
+      ],
+      "demo": "",
+      "repo": "",
+      "links": [],
+      "images": [],
+      "autoPreview": true,
+      "featured": false
+    }
+  ],
+  "education": [
+    {
+      "id": "edu-btech",
+      "degree": "B.Tech, Computer Science & Engineering",
+      "school": "Thakur Shivkumarsingh Memorial Engineering College, Burhanpur, India",
+      "start": "2022",
+      "end": "2026",
+      "score": "CGPA: 7.0 / 10"
+    },
+    {
+      "id": "edu-hsc",
+      "degree": "Higher Secondary (Class 12), Science (Mathematics)",
+      "school": "Adarsh Vidhyapeeth Higher Secondary School, Burhanpur, India",
+      "start": "2021",
+      "end": "2022",
+      "score": "Percentage: 82.9%"
+    }
+  ],
+  "certifications": [],
+  "achievements": [],
+  "settings": {
+    "resume": {
+      "template": "creative",
+      "paper": "Letter",
+      "accent": "#1a365d",
+      "fitOnePage": true,
+      "showPhoto": false,
+      "showProjectLinks": true,
+      "projectIds": [
+        "proj-medsync",
+        "proj-codereview"
+      ],
+      "source": "generated",
+      "uploadedName": ""
+    },
+    "site": {
+      "accent": "#151df4",
+      "theme": "light"
+    }
+  }
+}

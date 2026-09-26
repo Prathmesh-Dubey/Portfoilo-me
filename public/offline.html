@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#2f6df0" />
+<title>You're offline · ReuseMe</title>
+<style>
+  /* Self-contained on purpose: this page is shown when nothing else can load. */
+  :root { --bg: #f6f7fb; --text: #0e1220; --muted: #667085; --card: #ffffff; --line: #dde2ec; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #07080d; --text: #eceef5; --muted: #8a92a6; --card: #11131c; --line: #262a38; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(700px 400px at 20% 0%, rgba(47,109,240,.14), transparent 70%), var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    display: grid; place-items: center; padding: 24px; text-align: center;
+  }
+  main { display: grid; justify-items: center; gap: 18px; max-width: 420px; }
+  .word { font-weight: 800; font-size: 1.5rem; letter-spacing: -.03em; }
+  .word b { color: #2f6df0; } .word span { color: var(--text); }
+  h1 { margin: 6px 0 0; font-size: clamp(1.6rem, 6vw, 2.1rem); letter-spacing: -.02em; }
+  p { margin: 0; color: var(--muted); line-height: 1.6; }
+  button {
+    font: inherit; font-weight: 700; border: 0; cursor: pointer; color: #fff;
+    padding: 12px 22px; border-radius: 12px; background: #2f6df0;
+    box-shadow: 0 10px 26px -10px rgba(47,109,240,.8);
+  }
+  button:active { transform: scale(.97); }
+  .status { font-family: ui-monospace, 'Cascadia Code', monospace; font-size: .85rem; color: var(--muted); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; margin-right: 8px; animation: pulse 1.4s infinite; }
+
+  /* the resume that writes itself (same as the site's loader) */
+  .stage { position: relative; width: 150px; height: 170px; }
+  .page { position: absolute; left: 25px; top: 10px; width: 100px; height: 130px; border-radius: 10px; background: #fff;
+          border: 1px solid #dde2ec; box-shadow: 0 18px 40px -18px rgba(11,31,58,.45); animation: float 2.4s ease-in-out infinite; overflow: hidden; }
+  .page i { position: absolute; left: 12px; height: 5px; border-radius: 3px; background: #c9d1df; transform-origin: left; animation: write 2.8s ease-in-out infinite; }
+  .page .av { top: 14px; width: 20px; height: 20px; border-radius: 50%; background: #0b1f3a; animation: pulse 1.8s ease-in-out infinite; }
+  .page .t { left: 38px; top: 16px; width: 44px; background: #0b1f3a; animation-delay: .1s; }
+  .page .s { left: 38px; top: 26px; width: 30px; background: #2f6df0; animation-delay: .25s; }
+  .page .a { top: 52px; width: 76px; animation-delay: .45s; } .page .b { top: 64px; width: 64px; animation-delay: .6s; }
+  .page .c { top: 76px; width: 70px; animation-delay: .75s; } .page .d { top: 88px; width: 48px; animation-delay: .9s; }
+  .wifi { position: absolute; right: 2px; top: 0; width: 34px; height: 34px; border-radius: 50%; background: #1b1b1d; display: grid; place-items: center;
+          box-shadow: 0 8px 20px -6px rgba(0,0,0,.5); animation: bob 2.4s ease-in-out infinite; }
+  .spark { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; fill: #2f6df0;
+           filter: drop-shadow(0 0 6px rgba(47,109,240,.6)); animation: orbit 2.8s linear infinite; }
+  .shadow { position: absolute; left: 40px; bottom: 4px; width: 70px; height: 10px; border-radius: 50%; background: rgba(11,31,58,.18); filter: blur(4px); animation: sh 2.4s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-6px) rotate(-1.5deg); } }
+  @keyframes bob { 50% { transform: translateY(4px); } }
+  @keyframes sh { 50% { transform: scaleX(.82); opacity: .6; } }
+  @keyframes pulse { 50% { transform: scale(.85); opacity: .6; } }
+  @keyframes write { 0% { transform: scaleX(0); } 35%, 80% { transform: scaleX(1); } 100% { transform: scaleX(0); opacity: 0; } }
+  @keyframes orbit {
+    from { transform: rotate(0) translateX(78px) rotate(0) scale(1); }
+    50% { transform: rotate(180deg) translateX(78px) rotate(-180deg) scale(1.1); }
+    to { transform: rotate(360deg) translateX(78px) rotate(-360deg) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="word"><b>Reuse</b><span>Me</span></div>
+  <div class="stage" aria-hidden="true">
+    <div class="page"><i class="av"></i><i class="t"></i><i class="s"></i><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div>
+    <div class="wifi">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M3 3l18 18"/></svg>
+    </div>
+    <svg class="spark" viewBox="-13 -13 26 26"><path d="M0 -13 C1.6 -4 4 -1.6 13 0 C4 1.6 1.6 4 0 13 C-1.6 4 -4 1.6 -13 0 C-4 -1.6 -1.6 -4 0 -13 Z"/></svg>
+    <span class="shadow"></span>
+  </div>
+  <h1>You're offline</h1>
+  <p>No internet connection right now. ReuseMe will reconnect automatically as soon as you're back online.</p>
+  <p class="status" id="status"><span class="dot"></span>Waiting for connection…</p>
+  <button id="retry" type="button">Try again</button>
+</main>
+<script>
+  // Reload as soon as the connection is really back (the 'online' event alone can be optimistic).
+  var status = document.getElementById('status');
+  function check() {
+    fetch('/', { method: 'HEAD', cache: 'no-store' }).then(function (r) {
+      if (r.ok) { status.innerHTML = 'Connected, loading…'; location.reload(); }
+    }).catch(function () {});
+  }
+  window.addEventListener('online', check);
+  document.getElementById('retry').addEventListener('click', function () {
+    status.innerHTML = '<span class="dot"></span>Checking…'; check();
+    setTimeout(function () { status.innerHTML = '<span class="dot"></span>Still offline. Waiting for connection…'; }, 2500);
+  });
+  setInterval(check, 5000);
+</script>
+</body>
+</html>

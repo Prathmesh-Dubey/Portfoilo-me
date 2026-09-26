@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# portfolio runtime files
+/data/backups/
+!.env.example
+/public/pdf.worker.min.mjs
+/data/admin.json
+/data/suggestions.json
+/data/members/
+/data/members.json
+/data/payments.json
+/data/users.json
+/data/resumes/
