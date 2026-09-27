@@ -1,5 +1,11 @@
 import type { Project } from './types';
 
+/**
+ * The Android app (ReuseMe.apk). "latest" always points at the newest GitHub release, so publishing a new
+ * release — with the file still named ReuseMe.apk — updates every download button without a code change.
+ */
+export const APK_URL = 'https://github.com/Prathmesh-Dubey/Portfoilo-me/releases/latest/download/ReuseMe.apk';
+
 /** Opens Gmail's compose window addressed to `email` (works without a desktop mail app). */
 export const gmailCompose = (email: string, subject = '', body = '') =>
   `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}${subject ? `&su=${encodeURIComponent(subject)}` : ''}${body ? `&body=${encodeURIComponent(body)}` : ''}`;

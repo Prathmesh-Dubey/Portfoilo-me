@@ -3109,6 +3109,29 @@ img {
   gap: 10px;
 }
 
+/* "Download Android app" (components/AppDownload.tsx) */
+.app-dl {
+  gap: 8px;
+}
+.app-dl-meta {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.footer-app {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.footer-app .app-dl-meta {
+  margin-left: 2px;
+}
+
 /* ==========================================================================
    ReuseMe launch splash (pure CSS; hidden on repeat views via html.no-splash)
    ========================================================================== */
@@ -4695,4 +4718,34 @@ img {
 }
 .login-foot a:hover {
   color: var(--accent);
+}
+
+/* phone landing: "Download Android app" + "Share app" side by side */
+.ml-app-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+.ml-app-row .btn {
+  width: 100%;
+  min-width: 0;
+}
+.ml-app-row .app-dl {
+  overflow: hidden;
+}
+@media (max-width: 480px) {
+  /* phones: Share becomes a square icon button and the size tag hides, so both fit on one row */
+  .ml-app-row .app-dl-meta {
+    display: none;
+  }
+  .ml-share {
+    width: 56px !important;
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+  .ml-share svg {
+    width: 20px;
+    height: 20px;
+  }
 }

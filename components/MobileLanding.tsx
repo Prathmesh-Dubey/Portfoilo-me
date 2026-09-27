@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { AccountSummary } from '@/lib/auth';
+import { AppDownload, AppShare } from './AppDownload';
 import { useBackClose } from './backClose';
 import { BrandLogo } from './BrandLogo';
 import { Icon, type IconName } from './Icons';
@@ -33,11 +34,7 @@ export default function MobileLanding({
   // Reflect preview mode reactively (from either this component's own button or the
   // "Back to ReuseMe" bar in Portfolio) so a back gesture/hardware back can exit it
   // instead of leaving the app — there's no Escape key on a phone.
-  const [previewOn, setPreviewOn] = useState(false);
-  useEffect(() => {
-    setPreviewOn(isPreviewOn());
-    return onPreviewChange(() => setPreviewOn(isPreviewOn()));
-  }, []);
+  const previewOn = useSyncExternalStore(onPreviewChange, isPreviewOn, () => false);
   useBackClose(!standalone && previewOn, exitPreview);
 
   const features: { icon: IconName; title: string; text: string }[] = [
@@ -87,6 +84,10 @@ export default function MobileLanding({
           <button className="btn btn-ghost btn-lg" onClick={preview}>
             <Icon name="eye" size={18} /> Preview live portfolio
           </button>
+          <div className="ml-app-row">
+            <AppDownload className="btn btn-ghost btn-lg" />
+            <AppShare className="btn btn-ghost btn-lg ml-share" />
+          </div>
         </div>
 
         <div className="ml-visual" aria-hidden="true">

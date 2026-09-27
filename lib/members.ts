@@ -47,7 +47,7 @@ export const PRICES: Record<Plan, number> = {
 export const UPI = { id: process.env.UPI_ID || 'prathmesh.dubey@ptyes', name: process.env.UPI_NAME || 'Prathmesh Dubey' };
 
 // Paths that belong to the app itself and can never be a portfolio link.
-const RESERVED = new Set(['admin', 'api', 'join', 'resume-builder', 'offline', 'icons', 'manifest', 'login', 'pricing', 'about', 'app', 'www', 'reuseme', 'static', 'sw', 'members', 'status', 'signup', 'account', 'register', 'live', 'privacy', 'terms']);
+const RESERVED = new Set(['admin', 'api', 'join', 'resume-builder', 'offline', 'icons', 'manifest', 'login', 'pricing', 'about', 'app', 'www', 'reuseme', 'static', 'sw', 'members', 'status', 'signup', 'account', 'register', 'live', 'privacy', 'terms', 'download']);
 
 export const normEmail = (e: string) => String(e || '').trim().toLowerCase();
 export const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);

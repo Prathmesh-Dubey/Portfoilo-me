@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { gmailCompose } from '@/lib/links';
 import { MAX_RESUME_PROJECTS, type Portfolio as Data, type Project, type SkillGroup } from '@/lib/types';
+import { AppDownload } from './AppDownload';
 import { useBackClose } from './backClose';
 import { BrandLogo } from './BrandLogo';
 import { saveFile } from './nativeApp';
@@ -480,6 +481,7 @@ export default function Portfolio({
             <span>Me</span>
           </Link>
         )}
+        <AppDownload className="footer-app" label="Get the Android app" />
         <a href="#top">Back to top ↑</a>
       </footer>
 
