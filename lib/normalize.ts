@@ -1,4 +1,4 @@
-import { MAX_RESUME_PROJECTS, type Portfolio } from './types';
+import { MAX_RESUME_PROJECTS, isTemplate, type Portfolio } from './types';
 
 // Every save goes through normalize(), so the stored JSON always has a predictable shape and
 // nothing unsafe (javascript: links, unknown keys, huge strings) can get in. Shared by client and server.
@@ -116,7 +116,7 @@ export function normalize(input: any): Portfolio {
     achievements: lines(d.achievements),
     settings: {
       resume: {
-        template: r.template === 'classic' ? 'classic' : 'creative',
+        template: isTemplate(r.template) ? r.template : 'creative',
         paper: r.paper === 'A4' ? 'A4' : 'Letter',
         accent: color(r.accent, '#1a365d'),
         fitOnePage: defaultTrue(r.fitOnePage),

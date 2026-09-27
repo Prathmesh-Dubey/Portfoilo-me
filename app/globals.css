@@ -1940,6 +1940,66 @@ img {
   height: 24%;
   background: repeating-linear-gradient(#cbd5e1 0 3px, transparent 3px 8px);
 }
+/* Modern: full-height coloured sidebar + white main column */
+.tpl-thumb.modern i:nth-child(1) {
+  left: 0;
+  top: 0;
+  width: 31%;
+  height: 100%;
+  border-radius: 0;
+  background: #1e3a5f;
+}
+.tpl-thumb.modern i:nth-child(2) {
+  left: 38%;
+  top: 12%;
+  width: 44%;
+  height: 12%;
+  background: #1e293b;
+}
+.tpl-thumb.modern i:nth-child(3) {
+  left: 38%;
+  top: 30%;
+  width: 20%;
+  height: 3%;
+  background: var(--accent);
+}
+.tpl-thumb.modern i:nth-child(4) {
+  left: 38%;
+  top: 42%;
+  width: 54%;
+  height: 48%;
+  background: repeating-linear-gradient(#cbd5e1 0 3px, transparent 3px 8px);
+}
+/* Timeline: name with rule, dates down the left of a dotted line */
+.tpl-thumb.timeline i:nth-child(1) {
+  left: 8%;
+  top: 10%;
+  width: 46%;
+  height: 12%;
+  background: #1e293b;
+}
+.tpl-thumb.timeline i:nth-child(2) {
+  left: 8%;
+  top: 28%;
+  width: 84%;
+  height: 2.5%;
+  background: var(--accent);
+}
+.tpl-thumb.timeline i:nth-child(3) {
+  left: 30%;
+  top: 38%;
+  width: 2%;
+  height: 52%;
+  background: var(--accent);
+  opacity: 0.55;
+}
+.tpl-thumb.timeline i:nth-child(4) {
+  left: 38%;
+  top: 38%;
+  width: 54%;
+  height: 52%;
+  background: repeating-linear-gradient(#cbd5e1 0 3px, transparent 3px 8px);
+}
 .swatches {
   display: flex;
   flex-wrap: wrap;
@@ -2730,11 +2790,120 @@ img {
   align-items: center;
   flex-wrap: wrap;
 }
-.builder-design-row select {
+.builder-design-row select,
+.paper-row select {
   padding: 8px 10px;
   border-radius: 10px;
   background: var(--bg);
   border: 1px solid var(--border-strong);
+}
+
+/* accent colour: one button showing the current colour; the palette opens in a popup (bottom sheet on phones) */
+.colour-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.colour-row .label,
+.paper-row .label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.colour-row > .btn-ghost {
+  margin-left: auto;
+}
+.colour-picker {
+  position: relative;
+}
+.colour-btn {
+  gap: 8px;
+}
+.colour-btn i {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+.colour-btn code {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.colour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 94;
+}
+.colour-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 95;
+  width: 300px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  animation: pop 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.colour-pop-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .colour-backdrop {
+    background: rgba(3, 4, 8, 0.45);
+  }
+  .colour-pop {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 75dvh;
+    overflow-y: auto;
+  }
+}
+.colour-groups {
+  display: grid;
+  gap: 10px;
+}
+.colour-group {
+  display: grid;
+  gap: 6px;
+}
+.colour-group small {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.colour-group .swatches {
+  align-items: center;
+}
+.hex-input {
+  width: 96px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.paper-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .builder-preview {
   position: sticky;
@@ -2786,10 +2955,31 @@ img {
   }
 }
 @media (max-width: 640px) {
+  /* Full-width card instead of the desktop pill — the pill's shrink-to-fit width
+     turned into a tall oval that covered the hero once the text had to wrap. */
   .userview-banner {
-    top: 78px;
+    top: 84px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+    width: auto;
+    max-width: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
     white-space: normal;
-    font-size: 0.8rem;
+    text-align: left;
+    font-size: 0.85rem;
+  }
+  .userview-banner .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Make room so the banner card sits above the name instead of covering it. */
+  .showing-userview-banner .hero {
+    padding-top: 224px;
   }
   .menu {
     position: fixed;
@@ -2937,6 +3127,12 @@ img {
 }
 .no-splash .splash {
   display: none;
+}
+/* Launch animation is a phone-app touch — desktop/laptop visitors go straight to the site. */
+@media (min-width: 821px) {
+  .splash {
+    display: none;
+  }
 }
 .splash-inner {
   display: grid;
@@ -4082,6 +4278,36 @@ img {
 .mp-tabs button {
   flex-shrink: 0;
   white-space: nowrap;
+}
+.mp-tabs .tab-short {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  /* Short labels + tighter padding so all three tabs fit without needing to scroll. */
+  .mp-tabs .tab-full {
+    display: none;
+  }
+  .mp-tabs .tab-short {
+    display: inline;
+  }
+  .mp-tabs {
+    gap: 2px;
+    padding: 8px 16px 0;
+  }
+  .mp-tabs button {
+    padding: 8px 8px;
+    font-size: 0.86rem;
+  }
+  .members-panel .editor-head {
+    padding: 18px 18px 14px;
+  }
+  .members-panel .editor-head h3 {
+    font-size: 1.15rem;
+  }
+  .members-panel .editor-head p {
+    font-size: 0.82rem;
+  }
 }
 
 .join-account {

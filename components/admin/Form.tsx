@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useBackClose } from '../backClose';
 import { Icon } from '../Icons';
 import { PasswordInput } from '../PasswordInput';
 
@@ -39,6 +40,8 @@ export function EditorModal({ spec, onClose }: { spec: EditorSpec; onClose: () =
     if (dirty && !confirm('Discard unsaved changes?')) return;
     onClose();
   };
+
+  useBackClose(true, close);
 
   useEffect(() => {
     document.body.classList.add('no-scroll');

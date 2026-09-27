@@ -6,6 +6,8 @@ import type { Portfolio } from '../types';
 import { readPhoto } from '../store';
 import { ClassicResume } from './ClassicResume';
 import { CreativeResume } from './CreativeResume';
+import { ModernResume } from './ModernResume';
+import { TimelineResume } from './TimelineResume';
 import { registerFonts, type Photo } from './shared';
 
 export type ResumeResult = { pdf: Buffer; pages: number; scale: number };
@@ -14,8 +16,9 @@ type Rendered = { pdf: Buffer; scale: number };
 const MIN_SCALE = 0.78;
 const MAX_SCALE = 1.1;
 const PAGE_HEIGHT = { Letter: 792, A4: 841.89 } as const;
-// Page padding (pt) used by each template — must match the Page styles in CreativeResume / ClassicResume.
-const PADDING = { creative: { top: 28, bottom: 26 }, classic: { top: 30, bottom: 28 } } as const;
+// Vertical padding (pt) of each template's text area — must match the Page / column styles in each *Resume.tsx.
+const PADDING = { creative: { top: 28, bottom: 26 }, classic: { top: 30, bottom: 28 }, modern: { top: 28, bottom: 26 }, timeline: { top: 30, bottom: 28 } } as const;
+const DOCS = { creative: CreativeResume, classic: ClassicResume, modern: ModernResume, timeline: TimelineResume } as const;
 
 const countPages = (pdf: Buffer) => (pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length;
 
@@ -45,7 +48,7 @@ export async function renderResume(d: Portfolio, tenant = ''): Promise<ResumeRes
   }
 
   const r = d.settings.resume;
-  const Doc = r.template === 'classic' ? ClassicResume : CreativeResume;
+  const Doc = DOCS[r.template];
   const make = async (scale: number) => Buffer.from(await renderToBuffer(<Doc data={d} scale={scale} photo={photo} />));
 
   let pdf: Buffer = await make(1);

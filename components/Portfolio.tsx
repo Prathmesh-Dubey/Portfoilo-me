@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { gmailCompose } from '@/lib/links';
 import { MAX_RESUME_PROJECTS, type Portfolio as Data, type Project, type SkillGroup } from '@/lib/types';
+import { useBackClose } from './backClose';
 import { BrandLogo } from './BrandLogo';
 import { saveFile } from './nativeApp';
 import { CertificateGrid } from './Certificates';
@@ -26,6 +27,7 @@ import {
 import { Inbox } from './admin/Inbox';
 import { MembersPanel } from './admin/MembersPanel';
 import { ResumeStudio } from './admin/ResumeStudio';
+import { exitPreview } from './previewMode';
 import { SkillsGrid, projectsUsing, type SkillIconMap } from './Skills';
 import { SuggestionForm } from './SuggestionForm';
 import { TenantContext, withTenant } from './TenantContext';
@@ -123,6 +125,9 @@ export default function Portfolio({
   const open = (build: (c: AdminCtx) => EditorSpec) => setEditor(build(ctx));
 
   useReveal();
+  // Admin viewing "user view" on a phone: back gesture / hardware back returns to editing,
+  // same as tapping "Back to editing" in the banner — there's no Escape key on a phone.
+  useBackClose(admin && !editMode, () => setEditMode(true));
 
   const p = data.profile;
   const firstName = p.name.split(' ')[0] || p.name;
@@ -149,7 +154,7 @@ export default function Portfolio({
   return (
     <TenantContext.Provider value={tenant}>
     <div
-      className={`site ${editing ? 'is-editing' : ''} ${admin ? 'has-dock' : ''} ${isOwnerSite && !admin ? 'owner-site' : ''}`}
+      className={`site ${editing ? 'is-editing' : ''} ${admin ? 'has-dock' : ''} ${isOwnerSite && !admin ? 'owner-site' : ''} ${admin && !editMode ? 'showing-userview-banner' : ''}`}
       style={{ '--accent': data.settings.site.accent } as React.CSSProperties}
     >
       {isOwnerSite && !admin && (
@@ -538,17 +543,6 @@ export default function Portfolio({
     </div>
     </TenantContext.Provider>
   );
-}
-
-/** Leave the mobile portfolio preview and return to the ReuseMe landing page. */
-function exitPreview() {
-  try {
-    sessionStorage.removeItem('rm-preview');
-  } catch {
-    /* ignore */
-  }
-  document.documentElement.classList.remove('rm-preview');
-  window.scrollTo(0, 0);
 }
 
 function MemberBanner({ member }: { member: MemberInfo }) {
@@ -977,6 +971,8 @@ function AdminDock({
 
 /** Full-size view of the profile photo. Click anywhere or press Esc to close. */
 function PhotoLightbox({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+  useBackClose(true, onClose);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -1020,22 +1016,34 @@ function MenuItem({ icon, label, onRun, done }: { icon: Parameters<typeof Icon>[
 function useReveal() {
   useEffect(() => {
     const els = () => document.querySelectorAll('.reveal:not(.in)');
-    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      els().forEach((el) => el.classList.add('in'));
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))),
-      { rootMargin: '0px 0px -8% 0px' },
-    );
-    const observeAll = () => els().forEach((el) => io.observe(el));
-    observeAll();
-    // new cards (added projects, filters) should reveal too
-    const mo = new MutationObserver(observeAll);
-    mo.observe(document.body, { childList: true, subtree: true });
+    let cleanup = () => {};
+    // Wait a frame past the commit so this never races React's hydration check
+    // (elements already in view would otherwise flip to `in` almost instantly,
+    // which Next's dev overlay can misreport as a hydration mismatch).
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => {
+        if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          els().forEach((el) => el.classList.add('in'));
+          return;
+        }
+        const io = new IntersectionObserver(
+          (entries) => entries.forEach((e) => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))),
+          { rootMargin: '0px 0px -8% 0px' },
+        );
+        const observeAll = () => els().forEach((el) => io.observe(el));
+        observeAll();
+        // new cards (added projects, filters) should reveal too
+        const mo = new MutationObserver(observeAll);
+        mo.observe(document.body, { childList: true, subtree: true });
+        cleanup = () => {
+          io.disconnect();
+          mo.disconnect();
+        };
+      });
+    });
     return () => {
-      io.disconnect();
-      mo.disconnect();
+      cancelAnimationFrame(raf);
+      cleanup();
     };
   }, []);
 }

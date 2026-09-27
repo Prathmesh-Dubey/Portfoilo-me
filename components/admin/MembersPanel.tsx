@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { gmailCompose } from '@/lib/links';
+import { useBackClose } from '../backClose';
 import { Icon } from '../Icons';
 
 type Payment = {
@@ -32,6 +33,8 @@ export function MembersPanel({ onClose }: { onClose: () => void }) {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+
+  useBackClose(true, onClose);
 
   useEffect(() => {
     fetch('/api/members')
@@ -82,13 +85,17 @@ export function MembersPanel({ onClose }: { onClose: () => void }) {
 
         <div className="mp-tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'payments'} className={tab === 'payments' ? 'on' : ''} onClick={() => setTab('payments')}>
-            Payments to verify {toVerify.length > 0 && <b className="count">{toVerify.length}</b>}
+            <span className="tab-full">Payments to verify</span>
+            <span className="tab-short">Payments</span>
+            {toVerify.length > 0 && <b className="count">{toVerify.length}</b>}
           </button>
           <button role="tab" aria-selected={tab === 'members'} className={tab === 'members' ? 'on' : ''} onClick={() => setTab('members')}>
             Members {data && <span className="muted">({data.members.length})</span>}
           </button>
           <button role="tab" aria-selected={tab === 'users'} className={tab === 'users' ? 'on' : ''} onClick={() => setTab('users')}>
-            Free accounts {data && <span className="muted">({data.users.length})</span>}
+            <span className="tab-full">Free accounts</span>
+            <span className="tab-short">Free</span>
+            {data && <span className="muted">({data.users.length})</span>}
           </button>
         </div>
 

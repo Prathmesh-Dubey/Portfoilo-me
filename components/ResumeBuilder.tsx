@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { TEMPLATES, TEMPLATE_INFO, type Template } from '@/lib/types';
 import { Fields, type Field } from './admin/Form';
+import { useBackClose } from './backClose';
 import { BrandLogo } from './BrandLogo';
 import { PdfPreview } from './admin/PdfPreview';
 import { Icon } from './Icons';
@@ -18,12 +20,21 @@ type State = {
   projects: Obj;
   education: Obj;
   extras: Obj;
-  design: { template: 'creative' | 'classic'; paper: 'Letter' | 'A4'; accent: string; fitOnePage: boolean };
+  design: { template: Template; paper: 'Letter' | 'A4'; accent: string; fitOnePage: boolean };
 };
 
 // v3: older drafts (the Aarav Sharma demo, or the auto-filled example) are ignored.
 const STORAGE_KEY = 'pf-resume-builder-v3';
-const SWATCHES = ['#1a365d', '#0f766e', '#4338ca', '#7c3aed', '#be123c', '#b45309', '#0e7490', '#111827'];
+// Accent colours, grouped so a shade is easy to find; anything else comes from the custom picker / hex box.
+const PALETTE: { group: string; colours: string[] }[] = [
+  { group: 'Blues', colours: ['#1a365d', '#1e40af', '#2f6df0', '#0369a1', '#0e7490'] },
+  { group: 'Greens', colours: ['#0f766e', '#047857', '#15803d', '#4d7c0f'] },
+  { group: 'Purples', colours: ['#4338ca', '#6d28d9', '#7c3aed', '#9333ea'] },
+  { group: 'Reds & pinks', colours: ['#be123c', '#b91c1c', '#c2410c', '#db2777'] },
+  { group: 'Warm', colours: ['#b45309', '#a16207', '#92400e'] },
+  { group: 'Neutrals', colours: ['#111827', '#1f2937', '#374151', '#475569', '#64748b'] },
+];
+const ALL_COLOURS = PALETTE.flatMap((g) => g.colours);
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 const EMPTY: State = {
@@ -304,6 +315,16 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
   const [error, setError] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Accent colour popup (Escape, the backdrop, "Done", or a phone's back gesture all close it).
+  const [pickerOpen, setPickerOpen] = useState(false);
+  useBackClose(pickerOpen, () => setPickerOpen(false));
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPickerOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [pickerOpen]);
+
   // What the account last saved on the server, so unchanged drafts aren't re-sent.
   const lastSaved = useRef('');
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -386,6 +407,7 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
   const built = useRef(new Map<string, Promise<Built>>());
   const designChange = useRef(false);
   const requestId = useRef(0);
+  const lastTemplate = useRef<Template>(state.design.template);
 
   const buildPdf = useCallback((payload: Obj): Promise<Built> => {
     const key = JSON.stringify(payload);
@@ -426,9 +448,12 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
         if (id !== requestId.current) return; // a newer edit is on its way
         setPdf(result);
         setError('');
-        // Warm up the other template so switching to it is instant.
-        const other = payload.settings.resume.template === 'classic' ? 'creative' : 'classic';
-        buildPdf({ ...payload, settings: { resume: { ...payload.settings.resume, template: other } } }).catch(() => {});
+        // Warm up the template they last looked at, so flipping back and forth is instant (all four would
+        // quadruple the server work on every pause in typing).
+        const current = payload.settings.resume.template;
+        const prev = lastTemplate.current;
+        lastTemplate.current = current;
+        if (prev !== current) buildPdf({ ...payload, settings: { resume: { ...payload.settings.resume, template: prev } } }).catch(() => {});
       } catch (e) {
         if (id === requestId.current) setError((e as Error).message);
       } finally {
@@ -453,8 +478,10 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
         const result = await buildPdf(payload);
         if (cancelled) return;
         setExamplePdf(result);
-        const other = state.design.template === 'classic' ? 'creative' : 'classic';
-        buildPdf({ ...payload, settings: { resume: { ...payload.settings.resume, template: other } } }).catch(() => {});
+        // the example is built once per design, so pre-building every other template is cheap here
+        for (const other of TEMPLATES) {
+          if (other !== state.design.template) buildPdf({ ...payload, settings: { resume: { ...payload.settings.resume, template: other } } }).catch(() => {});
+        }
       } catch {
         /* the empty-state message stays */
       }
@@ -538,7 +565,7 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
               <Icon name="settings" size={18} /> Design
             </h2>
             <div className="tpl-grid">
-              {(['creative', 'classic'] as const).map((t) => (
+              {TEMPLATES.map((t) => (
                 <button key={t} className={`tpl ${state.design.template === t ? 'on' : ''}`} onClick={() => setDesign({ template: t })}>
                   <span className={`tpl-thumb ${t}`} aria-hidden="true">
                     <i />
@@ -546,17 +573,78 @@ export default function ResumeBuilder({ account = null }: { account?: Account })
                     <i />
                     <i />
                   </span>
-                  <b>{t === 'creative' ? 'Creative' : 'Classic ATS'}</b>
-                  <small>{t === 'creative' ? 'Two-column, modern' : 'Single column, recruiter-friendly'}</small>
+                  <b>{TEMPLATE_INFO[t].name}</b>
+                  <small>{TEMPLATE_INFO[t].blurb}</small>
                 </button>
               ))}
             </div>
-            <div className="builder-design-row">
-              <div className="swatches">
-                {SWATCHES.map((c) => (
-                  <button key={c} className={`swatch ${state.design.accent === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setDesign({ accent: c })} aria-label={c} />
-                ))}
+            <div className="colour-row">
+              <span className="label">Accent colour</span>
+              <div className="colour-picker">
+                <button className="btn colour-btn" onClick={() => setPickerOpen(!pickerOpen)} aria-haspopup="dialog" aria-expanded={pickerOpen}>
+                  <i style={{ background: state.design.accent }} /> <code>{state.design.accent}</code> Change
+                  <Icon name="down" size={14} />
+                </button>
+                {pickerOpen && (
+                  <>
+                    <div className="colour-backdrop" onClick={() => setPickerOpen(false)} />
+                    <div className="colour-pop" role="dialog" aria-label="Choose an accent colour">
+                      <div className="colour-groups">
+                        {PALETTE.map((g) => (
+                          <div key={g.group} className="colour-group">
+                            <small>{g.group}</small>
+                            <div className="swatches">
+                              {g.colours.map((c) => (
+                                <button key={c} className={`swatch ${state.design.accent === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setDesign({ accent: c })} aria-label={c} title={c} />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        <div className="colour-group">
+                          <small>Your own</small>
+                          <div className="swatches">
+                            <label className="swatch custom" title="Pick any colour">
+                              <input type="color" value={state.design.accent} onChange={(e) => setDesign({ accent: e.target.value })} />
+                              <Icon name="plus" size={14} />
+                            </label>
+                            {/* keyed on the accent so it shows the current value, yet lets you type a new one freely */}
+                            <input
+                              key={state.design.accent}
+                              className="hex-input"
+                              defaultValue={state.design.accent}
+                              maxLength={7}
+                              spellCheck={false}
+                              aria-label="Hex colour code"
+                              onChange={(e) => {
+                                const v = e.target.value.trim();
+                                if (/^#[0-9a-f]{6}$/i.test(v)) setDesign({ accent: v.toLowerCase() });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="colour-pop-foot">
+                        <span className="muted small">The preview updates as you pick.</span>
+                        <button className="btn btn-primary btn-sm" onClick={() => setPickerOpen(false)}>
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  const others = ALL_COLOURS.filter((c) => c !== state.design.accent);
+                  setDesign({ accent: others[Math.floor(Math.random() * others.length)] });
+                }}
+              >
+                <Icon name="cycle" size={14} /> Surprise me
+              </button>
+            </div>
+            <div className="paper-row">
+              <span className="label">Paper size</span>
               <select value={state.design.paper} onChange={(e) => setDesign({ paper: e.target.value as State['design']['paper'] })} aria-label="Paper size">
                 <option value="A4">A4</option>
                 <option value="Letter">US Letter</option>

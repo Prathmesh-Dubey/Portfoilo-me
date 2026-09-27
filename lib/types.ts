@@ -52,8 +52,19 @@ export type Education = { id: string; degree: string; school: string; start: str
 /** `course`: the programme it's for, e.g. "Java Full Stack"; `url`: where anyone can view the certificate. */
 export type Certification = { id: string; name: string; course: string; issuer: string; date: string; url: string };
 
+/** Resume designs, in the order the pickers show them. */
+export const TEMPLATES = ['creative', 'classic', 'modern', 'timeline'] as const;
+export type Template = (typeof TEMPLATES)[number];
+export const TEMPLATE_INFO: Record<Template, { name: string; blurb: string }> = {
+  creative: { name: 'Creative', blurb: 'Two-column, modern' },
+  classic: { name: 'Classic ATS', blurb: 'Single column, recruiter-friendly' },
+  modern: { name: 'Modern', blurb: 'Bold coloured sidebar' },
+  timeline: { name: 'Timeline', blurb: 'Dates down the side, elegant' },
+};
+export const isTemplate = (v: unknown): v is Template => TEMPLATES.includes(v as Template);
+
 export type ResumeSettings = {
-  template: 'creative' | 'classic';
+  template: Template;
   paper: 'Letter' | 'A4';
   accent: string;
   fitOnePage: boolean;

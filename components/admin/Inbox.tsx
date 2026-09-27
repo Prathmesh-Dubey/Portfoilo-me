@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { gmailCompose } from '@/lib/links';
+import { useBackClose } from '../backClose';
 import { Icon } from '../Icons';
 
 type Suggestion = { id: string; name: string; email: string; message: string; at: string };
@@ -10,6 +11,8 @@ type Suggestion = { id: string; name: string; email: string; message: string; at
 export function Inbox({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Suggestion[] | null>(null);
   const [error, setError] = useState('');
+
+  useBackClose(true, onClose);
 
   useEffect(() => {
     fetch('/api/suggestions')

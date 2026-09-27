@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { AccountSummary } from '@/lib/auth';
+import { useBackClose } from './backClose';
 import { BrandLogo } from './BrandLogo';
 import { Icon, type IconName } from './Icons';
+import { enterPreview, exitPreview, isPreviewOn, onPreviewChange } from './previewMode';
 
 /**
  * Phone-only first page for "/": explains ReuseMe and pushes the free resume builder.
@@ -26,19 +28,20 @@ export default function MobileLanding({
   standalone?: boolean;
 }) {
   const router = useRouter();
-  const preview = () => {
-    if (standalone) return router.push('/');
-    try {
-      sessionStorage.setItem('rm-preview', '1');
-    } catch {
-      /* ignore */
-    }
-    document.documentElement.classList.add('rm-preview');
-    window.scrollTo(0, 0);
-  };
+  const preview = () => (standalone ? router.push('/') : enterPreview());
+
+  // Reflect preview mode reactively (from either this component's own button or the
+  // "Back to ReuseMe" bar in Portfolio) so a back gesture/hardware back can exit it
+  // instead of leaving the app — there's no Escape key on a phone.
+  const [previewOn, setPreviewOn] = useState(false);
+  useEffect(() => {
+    setPreviewOn(isPreviewOn());
+    return onPreviewChange(() => setPreviewOn(isPreviewOn()));
+  }, []);
+  useBackClose(!standalone && previewOn, exitPreview);
 
   const features: { icon: IconName; title: string; text: string }[] = [
-    { icon: 'file', title: 'Two pro templates', text: 'Creative two-column or Classic ATS: recruiter-friendly and clean.' },
+    { icon: 'file', title: 'Four pro templates', text: 'Creative, Classic ATS, Modern sidebar or Timeline: recruiter-friendly and clean.' },
     { icon: 'check', title: 'Always one page', text: 'Text size adjusts automatically so everything fits on a single page.' },
     { icon: 'eye', title: 'Live PDF preview', text: 'See the real PDF update as you type. Download in one tap.' },
     { icon: 'lock', title: 'Private by design', text: 'Your draft stays on your device, or safely in your free account if you sign up.' },

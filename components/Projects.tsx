@@ -3,6 +3,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { projectLinks } from '@/lib/links';
 import type { Project } from '@/lib/types';
+import { useBackClose } from './backClose';
 import { Icon, linkIcon } from './Icons';
 import { TenantContext, withTenant } from './TenantContext';
 
@@ -68,6 +69,8 @@ export function ProjectLinks({ project, compact = false }: { project: Project; c
 export function ProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
   const images = projectImages(project, useContext(TenantContext));
   const [active, setActive] = useState(0);
+
+  useBackClose(true, onClose);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

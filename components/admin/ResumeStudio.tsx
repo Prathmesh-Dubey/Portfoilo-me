@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MAX_RESUME_PROJECTS, type Portfolio, type ResumeSettings } from '@/lib/types';
+import { MAX_RESUME_PROJECTS, TEMPLATES, TEMPLATE_INFO, type Portfolio, type ResumeSettings } from '@/lib/types';
+import { useBackClose } from '../backClose';
 import { Icon } from '../Icons';
 import type { AdminCtx } from './editors';
 import { PdfPreview } from './PdfPreview';
@@ -56,7 +57,7 @@ export function ResumeStudio({ data, ctx, onClose }: { data: Portfolio; ctx: Adm
   // Preview = the real PDF bytes of whatever visitors will download.
   useEffect(() => {
     let cancelled = false;
-    const other = r.template === 'classic' ? 'creative' : 'classic';
+    const others = TEMPLATES.filter((t) => t !== r.template);
     (async () => {
       const key = showingUpload ? `upload|${data.updatedAt}` : `gen|${data.updatedAt}|${r.template}`;
       if (!built.current.has(key)) setLoading(true);
@@ -67,8 +68,8 @@ export function ResumeStudio({ data, ctx, onClose }: { data: Portfolio; ctx: Adm
         setBytes(b.bytes);
         setInfo(b.info);
         setError('');
-        // Pre-build the other template in the background so switching to it is instant.
-        if (!showingUpload) getPdf(tu(`/api/resume?template=${other}`), `gen|${data.updatedAt}|${other}`, true).catch(() => {});
+        // Pre-build the other templates in the background so switching to them is instant.
+        if (!showingUpload) others.forEach((other) => getPdf(tu(`/api/resume?template=${other}`), `gen|${data.updatedAt}|${other}`, true).catch(() => {}));
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       } finally {
@@ -87,6 +88,8 @@ export function ResumeStudio({ data, ctx, onClose }: { data: Portfolio; ctx: Adm
     if (ready && !showingUpload) ready.then(show).catch(() => {});
     update({ template: t });
   };
+
+  useBackClose(true, onClose);
 
   useEffect(() => {
     document.body.classList.add('no-scroll');
@@ -212,7 +215,7 @@ export function ResumeStudio({ data, ctx, onClose }: { data: Portfolio; ctx: Adm
           <div className="studio-group">
             <span className="label">Template</span>
             <div className="tpl-grid">
-              {(['creative', 'classic'] as const).map((t) => (
+              {TEMPLATES.map((t) => (
                 <button key={t} className={`tpl ${r.template === t ? 'on' : ''}`} onClick={() => pickTemplate(t)}>
                   <span className={`tpl-thumb ${t}`} aria-hidden="true">
                     <i />
@@ -220,8 +223,8 @@ export function ResumeStudio({ data, ctx, onClose }: { data: Portfolio; ctx: Adm
                     <i />
                     <i />
                   </span>
-                  <b>{t === 'creative' ? 'Creative' : 'Classic ATS'}</b>
-                  <small>{t === 'creative' ? 'Two-column, modern' : 'Single column, like your original'}</small>
+                  <b>{TEMPLATE_INFO[t].name}</b>
+                  <small>{t === 'classic' ? 'Single column, like your original' : TEMPLATE_INFO[t].blurb}</small>
                 </button>
               ))}
             </div>
@@ -251,7 +254,7 @@ export function ResumeStudio({ data, ctx, onClose }: { data: Portfolio; ctx: Adm
             <div className="toggles">
               <Toggle label="Fit on one page" on={r.fitOnePage} onChange={(v) => update({ fitOnePage: v })} />
               <Toggle label="Project links" on={r.showProjectLinks} onChange={(v) => update({ showProjectLinks: v })} />
-              {r.template === 'creative' && (
+              {(r.template === 'creative' || r.template === 'modern') && (
                 <Toggle label="Photo" on={r.showPhoto} disabled={!data.profile.photo} title={data.profile.photo ? '' : 'Upload a photo in Profile first'} onChange={(v) => update({ showPhoto: v })} />
               )}
             </div>
